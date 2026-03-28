@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>말씀공간 - 성경 & 성경노트</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@100..900&display=swap" rel="stylesheet">
+</head>
+<body class="dark-mode">
+    <div id="app">
+        <!-- View Toggle for Mobile -->
+        <div class="view-toggle-mobile">
+            <button id="toggleView" class="btn primary">노트 모드로 전환</button>
+        </div>
+        
+        <!-- Navigation Sidebar -->
+        <aside id="sidebar">
+            <div class="logo">
+                <img src="bible_note_logo.png" alt="Logo" class="app-logo" style="width: 50px; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));">
+                <h1>말씀공간</h1>
+                <p>Bible & Notes</p>
+            </div>
+            
+            <div class="search-bar">
+                <input type="text" id="bibleSearch" placeholder="성경 검색 (예: 창 1:1)">
+            </div>
+
+            <nav id="bookList">
+                <div class="testament-header">구약성경</div>
+                <div id="oldTestament" class="books-grid"></div>
+                <div class="testament-header">신약성경</div>
+                <div id="newTestament" class="books-grid"></div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="importBtn" class="btn secondary">성경 파일 불러오기</button>
+                <input type="file" id="fileInput" multiple accept=".txt" style="display: none;">
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main id="mainContent">
+            <!-- Bible Viewer Pane -->
+            <section id="biblePane" class="pane">
+                <header class="pane-header">
+                    <h2 id="currentLocation">창세기 1장</h2>
+                    <div class="chapter-nav">
+                        <button id="prevChapter" class="icon-btn">&lsaquo;</button>
+                        <select id="chapterSelect"></select>
+                        <button id="nextChapter" class="icon-btn">&rsaquo;</button>
+                    </div>
+                </header>
+                <div id="verseList" class="verse-container">
+                    <p class="empty-msg">성경 책을 선택하거나 파일을 불러오세요.</p>
+                </div>
+                
+                <div id="selectionToolbar" class="selection-toolbar hidden">
+                    <span id="selectedCount">0개 선택됨</span>
+                    <button id="addSelectedToNote" class="btn primary">노트로 보내기</button>
+                </div>
+            </section>
+
+            <!-- Divider -->
+            <div class="divider"></div>
+
+            <!-- Bible Note Pane -->
+            <section id="notePane" class="pane">
+                <header class="pane-header">
+                    <input type="text" id="noteTitle" placeholder="노트 제목 입력..." class="note-title-input">
+                    <div class="note-actions">
+                        <button id="saveNote" class="btn primary">저장</button>
+                        <button id="newNote" class="btn secondary">새 노트</button>
+                    </div>
+                </header>
+                <div class="note-editor">
+                    <div id="quotedVerses" class="quoted-verses">
+                        <!-- Quoted verses will appear here -->
+                    </div>
+                    <textarea id="noteContent" placeholder="설교 말씀이나 묵상을 적어보세요..."></textarea>
+                </div>
+                
+                <!-- Memo and Calendar Integration -->
+                <div class="note-footer-content">
+                    <div class="memo-section">
+                        <h3>메모</h3>
+                        <textarea id="generalMemo" placeholder="기타 메모 내용을 입력하세요..."></textarea>
+                    </div>
+                    
+                    <div class="calendar-section">
+                        <div class="calendar-header">
+                            <h3 id="calendarMonth">2026년 3월</h3>
+                            <div class="calendar-nav">
+                                <button id="prevMonth" class="icon-btn-sm">&lsaquo;</button>
+                                <button id="nextMonth" class="icon-btn-sm">&rsaquo;</button>
+                            </div>
+                        </div>
+                        <div id="calendarGrid" class="calendar-grid">
+                            <!-- Calendar generated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="saved-notes-section">
+                    <h3>노트 목록</h3>
+                    <div id="savedNotesList" class="notes-mini-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals / Overlays -->
+    <div id="importOverlay" class="overlay hidden">
+        <div class="modal">
+            <h3>성경 데이터 불러오기</h3>
+            <p>개역개정 성경 데이터를 자동으로 설정하거나 파일을 직접 선택할 수 있습니다.</p>
+            <button id="autoImportBtn" class="btn primary">개역개정 자동 설정 (추천)</button>
+            <button id="modalSelectFiles" class="btn secondary">파일 직접 선택하기</button>
+            <button id="closeModal" class="btn text">나중에 하기</button>
+        </div>
+    </div>
+
+    <!-- Progress Overlay for Auto Import -->
+    <div id="loadingOverlay" class="overlay hidden">
+        <div class="modal">
+            <div class="spinner"></div>
+            <h3>성경 데이터를 불러오는 중...</h3>
+            <p>잠시만 기다려 주세요. (약 5~10초 소요)</p>
+            <div class="progress-bar-container">
+                <div id="importProgress" class="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
