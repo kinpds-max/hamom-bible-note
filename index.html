@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>말씀공간 - 성경 & 성경노트</title>
+    <title>말씀공간 Pro - 프리미엄 성경노트</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Pretendard:wght@100..900&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
     <div id="app">
@@ -13,9 +13,9 @@
         <!-- Navigation Sidebar -->
         <aside id="sidebar">
             <div class="logo">
-                <img src="bible_note_logo.png" alt="Logo" class="app-logo" style="width: 50px; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));">
+                <div class="logo-icon">✝</div>
                 <h1>말씀공간</h1>
-                <p>Bible & Notes</p>
+                <p>Bible Note Pro</p>
             </div>
             
             <div class="search-bar">
@@ -68,43 +68,48 @@
             <!-- Bible Note Pane -->
             <section id="notePane" class="pane">
                 <header class="pane-header">
-                    <input type="text" id="noteTitle" placeholder="노트 제목 입력..." class="note-title-input">
+                    <div class="note-meta">
+                        <input type="text" id="noteTitle" placeholder="설교 제목을 입력하세요..." class="note-title-input">
+                        <div class="note-subtitle">
+                            <span id="noteDateDisplay">2026. 03. 28</span>
+                        </div>
+                    </div>
                     <div class="note-actions">
-                        <button id="saveNote" class="btn primary">저장</button>
-                        <button id="newNote" class="btn secondary">새 노트</button>
+                        <button id="saveNote" class="btn primary">저장하기</button>
+                        <button id="newNote" class="btn secondary">새 설교노트</button>
                     </div>
                 </header>
-                <div class="note-editor">
-                    <div id="quotedVerses" class="quoted-verses">
-                        <!-- Quoted verses will appear here -->
+
+                <div class="note-editor-wrapper">
+                    <div class="note-editor-container">
+                        <!-- Quoted Verses Section -->
+                        <div id="quotedVerses" class="quoted-verses-list">
+                            <div class="quoted-verses-placeholder">성경 구절을 선택해 이곳으로 보내세요</div>
+                        </div>
+                        
+                        <!-- Rich Text Area -->
+                        <div class="content-area">
+                            <textarea id="noteContent" placeholder="여기에 설교 내용을 기록하세요..."></textarea>
+                        </div>
                     </div>
-                    <textarea id="noteContent" placeholder="설교 말씀이나 묵상을 적어보세요..."></textarea>
                 </div>
                 
-                <!-- Memo and Calendar Integration -->
-                <div class="note-footer-content">
-                    <div class="memo-section">
-                        <h3>메모</h3>
-                        <textarea id="generalMemo" placeholder="기타 메모 내용을 입력하세요..."></textarea>
+                <!-- Bottom Analytics & List -->
+                <div class="note-footer-tabs">
+                    <div class="note-list-mini">
+                        <div class="footer-tab-header">최근 설교 목록</div>
+                        <div id="savedNotesList" class="mini-notes-scroll"></div>
                     </div>
                     
-                    <div class="calendar-section">
-                        <div class="calendar-header">
-                            <h3 id="calendarMonth">2026년 3월</h3>
-                            <div class="calendar-nav">
-                                <button id="prevMonth" class="icon-btn-sm">&lsaquo;</button>
-                                <button id="nextMonth" class="icon-btn-sm">&rsaquo;</button>
-                            </div>
+                    <div class="footer-details">
+                        <div class="memo-mini">
+                            <div class="footer-tab-header">오늘의 메모</div>
+                            <textarea id="generalMemo" placeholder="간단한 메모..."></textarea>
                         </div>
-                        <div id="calendarGrid" class="calendar-grid">
-                            <!-- Calendar generated here -->
+                        <div class="calendar-mini">
+                            <div id="calendarGrid" class="calendar-mini-grid"></div>
                         </div>
                     </div>
-                </div>
-
-                <div class="saved-notes-section">
-                    <h3>노트 목록</h3>
-                    <div id="savedNotesList" class="notes-mini-list"></div>
                 </div>
             </section>
         </main>
