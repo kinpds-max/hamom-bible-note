@@ -1,289 +1,467 @@
 :root {
-    /* Dark Mode (Midnight Premium) */
-    --primary-color: #7d5fff;
-    --primary-glow: rgba(125, 95, 255, 0.4);
-    --bg-color: #0c0d12;
-    --side-bg: rgba(18, 20, 29, 0.95);
-    --pane-bg: rgba(12, 13, 18, 0.8);
-    --text-main: #f5f6fa;
-    --text-sub: #a1a6b4;
-    --border-color: rgba(255, 255, 255, 0.08);
-    --item-bg: rgba(255, 255, 255, 0.03);
-    --hover-bg: rgba(125, 95, 255, 0.12);
-    --selection-bg: rgba(125, 95, 255, 0.2);
-    --sidebar-width: 280px;
-    --glass-blur: 25px;
-    --transition-speed: 0.3s;
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    /* Premium MacBook Silver Theme (Default) */
+    --primary: #0071E3; /* Apple Blue */
+    --primary-light: #409CFF;
+    --accent: #FF3B30;
+    
+    --bg-app: #F5F5F7; /* Apple System Gray 6 */
+    --bg-pane: #FFFFFF;
+    --bg-sidebar: rgba(245, 245, 247, 0.85); /* Glassy Silver */
+    --bg-item: #FFFFFF;
+    --bg-hover: #E8E8ED;
+    
+    --text-main: #1D1D1F;
+    --text-muted: #86868B;
+    --border: rgba(0, 0, 0, 0.1);
+    --glass: rgba(255, 255, 255, 0.75);
+    --shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+    --header-height: 70px;
+    --sidebar-width: 250px;
+    
+    --highlight-color: #FFF200;
 }
 
-.silver-mode {
-    /* Apple Pro Silver Theme */
-    --primary-color: #0071e3;
-    --primary-glow: rgba(0, 113, 227, 0.25);
-    --bg-color: #f5f5f7;
-    --side-bg: rgba(245, 245, 247, 0.9);
-    --pane-bg: rgba(255, 255, 255, 0.85);
-    --text-main: #1d1d1f;
-    --text-sub: #6e6e73;
-    --border-color: rgba(0, 0, 0, 0.08);
-    --item-bg: rgba(0, 0, 0, 0.02);
-    --hover-bg: rgba(0, 113, 227, 0.05);
-    --selection-bg: rgba(0, 113, 227, 0.1);
+.dark-mode {
+    --primary: #0A84FF;
+    --primary-light: #64D2FF;
+    --bg-app: #000000;
+    --bg-pane: #1C1C1E;
+    --bg-sidebar: #0A0A0A;
+    --bg-item: #2C2C2E;
+    --bg-hover: #3A3A3C;
+    --text-main: #F5F5F7;
+    --text-muted: #86868B;
+    --border: rgba(255, 255, 255, 0.1);
+    --glass: rgba(28, 28, 30, 0.8);
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-/* Layout Core */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+body {
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    overflow: hidden;
+    height: 100vh;
+}
+
 #app {
     display: flex;
     height: 100vh;
-    background: var(--bg-color);
-    overflow: hidden;
+    width: 100vw;
 }
 
+/* Sidebar Styling */
 #sidebar {
     width: var(--sidebar-width);
-    background: var(--side-bg);
-    border-right: 1px solid var(--border-color);
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    padding: 24px;
-    backdrop-filter: blur(var(--glass-blur));
-    z-index: 100;
+    padding: 30px 15px;
+    z-index: 10;
+    backdrop-filter: blur(20px);
 }
 
 .logo {
-    margin-bottom: 30px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    margin-bottom: 35px;
+    padding: 0 10px;
     text-align: center;
 }
 
 .logo-icon {
-    width: 50px;
-    height: 50px;
-    background: var(--primary-color);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    margin-bottom: 12px;
-    box-shadow: 0 8px 16px var(--primary-glow);
+    font-size: 32px;
+    margin-bottom: 8px;
 }
 
 .logo h1 {
     font-family: 'Outfit', sans-serif;
-    font-size: 1.5rem;
+    font-size: 19px;
     font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text-main);
 }
 
 .logo p {
-    font-size: 0.8rem;
-    color: var(--text-sub);
-    letter-spacing: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
 }
 
-/* Scrollbars */
-*::-webkit-scrollbar { width: 5px; height: 5px; }
-*::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-*::-webkit-scrollbar-track { background: transparent; }
+.search-bar {
+    margin-bottom: 25px;
+    padding: 0 5px;
+}
 
-/* Bible Search */
 .search-bar input {
     width: 100%;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border-color);
+    padding: 10px 15px;
     border-radius: 10px;
-    padding: 12px 16px;
-    color: #fff;
-    font-size: 0.9rem;
+    border: 1px solid var(--border);
+    background-color: rgba(0,0,0,0.03);
+    color: var(--text-main);
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.dark-mode .search-bar input {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.search-bar input:focus {
+    background-color: var(--bg-item);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
 }
 
 /* Book Grid */
+#bookList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 5px;
+}
+
+.testament-header {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-muted);
+    margin: 20px 0 10px 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 .books-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    padding-bottom: 30px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 20px;
 }
 
 .book-item {
-    background: var(--item-bg);
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0,0,0,0.02);
     border-radius: 8px;
-    padding: 10px;
-    text-align: center;
-    font-size: 0.9rem;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
     border: 1px solid transparent;
 }
 
-.book-item:hover { background: var(--hover-bg); border-color: var(--primary-color); }
-.book-item.active { background: var(--primary-color); color: #fff; box-shadow: 0 4px 12px var(--primary-glow); }
+.dark-mode .book-item { background-color: rgba(255,255,255,0.03); }
+
+.book-item:hover {
+    background-color: var(--bg-hover);
+    transform: scale(1.05);
+}
+
+.book-item.active {
+    background-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding: 20px 10px 0;
+    border-top: 1px solid var(--border);
+}
+
+.app-version {
+    font-size: 10px;
+    color: var(--primary);
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.copyright {
+    font-size: 10px;
+    color: var(--text-muted);
+}
 
 /* Main Content Area */
 #mainContent {
     flex: 1;
     display: flex;
-    position: relative;
+    padding: 20px;
+    gap: 20px;
 }
 
 .pane {
     flex: 1;
+    background-color: var(--bg-pane);
+    border-radius: 20px;
     display: flex;
     flex-direction: column;
-    height: 100%;
     overflow: hidden;
-    position: relative;
-    background: var(--pane-bg);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
 }
 
 .pane-header {
-    height: 80px;
-    padding: 0 40px;
+    height: var(--header-height);
+    padding: 0 25px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid var(--border-color);
-    background: rgba(12, 13, 18, 0.4);
-    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    background-color: var(--glass);
+    backdrop-filter: blur(15px);
 }
 
-/* Bible Pane Specific */
+.pane-header h2 {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
+
+/* Bible Viewer */
 .verse-container {
     flex: 1;
     overflow-y: auto;
-    padding: 40px;
-    line-height: 1.8;
+    padding: 25px 30px;
 }
 
 .verse-item {
-    padding: 12px 20px;
-    border-radius: 12px;
-    margin-bottom: 4px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 2px;
+    line-height: 1.7;
     cursor: pointer;
     transition: all 0.2s;
-    border: 1px solid transparent;
+    display: flex;
+    gap: 15px;
 }
 
-.verse-item:hover { background: rgba(255,255,255,0.03); }
-.verse-item.selected { background: var(--item-bg); border-color: var(--primary-color); }
+.verse-item:hover {
+    background-color: var(--bg-hover);
+}
 
-.verse-num { color: var(--primary-color); font-weight: 700; margin-right: 12px; font-size: 1rem; opacity: 0.8; }
-.section-title { color: var(--text-sub); display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 600; }
+.verse-item.selected {
+    background-color: rgba(0, 113, 227, 0.05);
+}
 
-/* Note Pane Specific */
-.note-meta { display: flex; flex-direction: column; }
-.note-title-input { background: none; border: none; font-size: 1.4rem; font-weight: 700; color: #fff; outline: none; padding: 0; }
-.note-subtitle { font-size: 0.85rem; color: var(--text-sub); margin-top: 4px; }
+.verse-item.highlighted .verse-text {
+    background-color: var(--highlight-color);
+    border-radius: 3px;
+    padding: 0 2px;
+}
+
+.dark-mode .verse-item.highlighted .verse-text {
+    background-color: #555500;
+    color: #FFF200;
+}
+
+.verse-num {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 13px;
+    min-width: 25px;
+    text-align: right;
+}
+
+.verse-text {
+    font-size: 15px;
+    color: var(--text-main);
+}
+
+.section-title {
+    display: block;
+    margin: 20px 0 8px 0;
+    font-weight: 800;
+    color: var(--primary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Feature Bar */
+.feature-bar {
+    padding: 10px 20px;
+    background-color: var(--bg-app);
+    display: flex;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.feature-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-pane);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-main);
+}
+
+.feature-btn:hover {
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* Note Editor */
+.note-title-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-main);
+    outline: none;
+    letter-spacing: -0.5px;
+}
 
 .note-editor-wrapper {
     flex: 1;
     overflow-y: auto;
-    padding: 20px 40px;
+    padding: 40px;
 }
 
-.note-editor-container {
-    max-width: 800px;
-    margin: 0 auto;
-    min-height: 100%;
+#noteContent {
+    width: 100%;
+    min-height: 500px;
+    background: transparent;
+    border: none;
+    resize: none;
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--text-main);
+    outline: none;
 }
 
-.quoted-verses-list {
-    margin-bottom: 30px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
+/* Quoted Verses */
 .quoted-verse {
-    background: rgba(125, 95, 255, 0.08);
-    border-left: 3px solid var(--primary-color);
-    padding: 16px 20px;
-    border-radius: 4px 12px 12px 4px;
+    background-color: var(--bg-hover);
+    padding: 20px 24px;
+    border-radius: 14px;
+    margin-bottom: 15px;
     position: relative;
+    border-left: 5px solid var(--primary);
 }
 
-.quoted-verse strong { display: block; margin-bottom: 4px; font-size: 0.9rem; color: var(--primary-color); }
-.remove-quote { position: absolute; top: 10px; right: 15px; cursor: pointer; color: var(--text-sub); padding: 5px; }
-
-.quoted-verses-placeholder { padding: 40px 20px; text-align: center; border: 1px dashed var(--border-color); border-radius: 16px; color: var(--text-sub); font-size: 0.9rem; }
-
-#noteContent { 
-    width: 100%; 
-    min-height: 400px; 
-    background: none; 
-    border: none; 
-    color: var(--text-main); 
-    font-size: 1.15rem; 
-    line-height: 1.6; 
-    outline: none; 
-    resize: none; 
+.quoted-verse strong {
+    display: block;
+    font-size: 11px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
 }
 
-/* Footer Tabs */
+/* Footer Components */
 .note-footer-tabs {
-    height: 220px;
+    border-top: 1px solid var(--border);
+    height: 240px;
     display: flex;
-    border-top: 1px solid var(--border-color);
-    background: rgba(0,0,0,0.2);
+    background-color: var(--bg-pane);
 }
 
 .note-list-mini {
-    width: 300px;
-    border-right: 1px solid var(--border-color);
+    width: 240px;
+    border-right: 1px solid var(--border);
+    padding: 20px;
     display: flex;
     flex-direction: column;
 }
 
-.footer-tab-header { padding: 15px 20px; font-size: 0.75rem; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-.mini-notes-scroll { flex: 1; overflow-y: auto; padding: 0 10px 15px; }
-
-.note-mini-item {
-    padding: 10px 15px; border-radius: 8px; font-size: 0.9rem; color: var(--text-main); margin-bottom: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+.mini-notes-scroll {
+    flex: 1;
+    overflow-y: auto;
 }
-.note-mini-item:hover { background: rgba(255,255,255,0.05); }
-.note-mini-item small { color: var(--text-sub); font-size: 0.75rem; }
 
-.footer-details { flex: 1; display: flex; }
-.memo-mini { flex: 1; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; }
-#generalMemo { background: none; border: none; padding: 0 20px 15px; color: var(--text-main); flex: 1; outline: none; resize: none; font-size: 0.95rem; }
-
-.calendar-mini { width: 240px; padding: 10px; }
-.calendar-mini-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.calendar-day-header { font-size: 0.65rem; padding-bottom: 5px; text-align: center; color: var(--text-sub); }
-.calendar-day { padding: 4px 0; font-size: 0.75rem; text-align: center; border-radius: 4px; cursor: pointer; }
-.calendar-day:hover { background: rgba(255,255,255,0.05); }
-.calendar-day.today { background: var(--primary-color); color: #fff; font-weight: 700; }
-.calendar-day.has-note::after { content: "."; display: block; line-height: 0; color: var(--primary-color); font-size: 1.5rem; margin-top: -2px; }
-
-/* Buttons & Toggles */
-.btn { border: none; border-radius: 12px; padding: 10px 24px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
-.btn.primary { background: var(--primary-color); color: #fff; box-shadow: 0 4px 15px var(--primary-glow); }
-.btn.secondary { background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border-color); }
-.btn.primary:hover { transform: translateY(-2px); filter: brightness(1.1); }
+.footer-details {
+    flex: 1;
+    display: flex;
+    padding: 20px;
+    gap: 20px;
+}
 
 /* Selection Toolbar */
-.selection-toolbar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: #12141d; border: 1px solid var(--primary-color); padding: 12px 24px; border-radius: 50px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1000; animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.selection-toolbar.hidden { display: none; }
-@keyframes slideUp { from { transform: translate(-50%, 50px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
-
-/* Theme Toggles in Sidebar */
-.sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-color); }
-.btn-sm { background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-sub); padding: 6px 12px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; }
-.btn-sm.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
-
-/* Mobile View */
-@media (max-width: 900px) {
-    #sidebar { display: none; }
-    #mainContent { flex-direction: column; }
-    .divider { display: none; }
-    .note-footer-tabs { display: none; }
+.selection-toolbar {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1D1D1F;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 40px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
 }
 
-/* Animations */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.verse-item { animation: fadeIn 0.4s ease-out backwards; }
-.verse-item:nth-child(even) { animation-delay: 0.05s; }
+.dark-mode .selection-toolbar {
+    background-color: #3A3A3C;
+}
+
+/* General UI Elements */
+.btn {
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.btn.primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn.secondary {
+    background-color: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.btn-sm {
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.btn-sm.active {
+    background-color: var(--text-main);
+    color: var(--bg-pane);
+    border-color: var(--text-main);
+}
+
+@keyframes slideUp {
+    from { transform: translate(-50%, 50px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.selection-toolbar:not(.hidden) {
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+.dark-mode ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }

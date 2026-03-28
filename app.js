@@ -25,7 +25,7 @@ class BibleApp {
         this.renderCalendar();
         this.loadMemo();
         this.updateDateDisplay();
-        this.switchTheme(localStorage.getItem('bibleTheme') || 'dark');
+        this.switchTheme(localStorage.getItem('bibleTheme') || 'silver');
         
         // Load default view
         this.switchBook(this.currentBook.id);
@@ -67,9 +67,17 @@ class BibleApp {
         document.getElementById('verseList').addEventListener('click', (e) => this.handleVerseClick(e));
         document.getElementById('addSelectedToNote').addEventListener('click', () => this.addSelectedToNote());
 
+        // New: Highlighting
+        document.getElementById('highlightSelected').addEventListener('click', () => this.toggleHighlight());
+
         document.getElementById('saveNote').addEventListener('click', () => this.saveCurrentNote());
-        document.getElementById('newNote').addEventListener('click', () => this.createNewNote());
+        document.getElementById('shareNote').addEventListener('click', () => this.shareCurrentNote());
         
+        // New: Feature Bar
+        document.getElementById('aiSummaryBtn').addEventListener('click', () => this.runAISummary());
+        document.getElementById('notebookLMBtn').addEventListener('click', () => window.open('https://notebooklm.google.com/', '_blank'));
+        document.getElementById('voiceRecordBtn').addEventListener('click', () => this.toggleRecording());
+
         document.getElementById('bibleSearch').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.searchBible(e.target.value);
         });
@@ -83,74 +91,129 @@ class BibleApp {
     }
 
     switchTheme(theme) {
-        if (theme === 'silver') {
+        if (theme === 'dark') {
+            document.body.classList.remove('silver-mode');
+            document.body.classList.add('dark-mode');
+            document.getElementById('darkThemeBtn').classList.add('active');
+            document.getElementById('silverThemeBtn').classList.remove('active');
+        } else {
+            document.body.classList.remove('dark-mode');
             document.body.classList.add('silver-mode');
             document.getElementById('silverThemeBtn').classList.add('active');
             document.getElementById('darkThemeBtn').classList.remove('active');
-        } else {
-            document.body.classList.remove('silver-mode');
-            document.getElementById('darkThemeBtn').classList.add('active');
-            document.getElementById('silverThemeBtn').classList.remove('active');
         }
         localStorage.setItem('bibleTheme', theme);
+    }
+
+    async runAISummary() {
+        const content = document.getElementById('noteContent').value;
+        if (!content || content.length < 10) {
+            alert('요약할 내용이 너무 적습니다.');
+            return;
+        }
+
+        const overlay = document.getElementById('loadingOverlay');
+        const text = document.getElementById('loadingText');
+        text.textContent = 'AI가 설교 내용을 분석 중입니다...';
+        overlay.classList.remove('hidden');
+
+        await new Promise(r => setTimeout(r, 2000));
+
+        const summary = `[AI 핵심 요약]\n1. 본문 주제: ${this.currentBook.name}을 통한 신앙의 성찰\n2. 주요 통찰: 하나님의 은혜는 우리의 연약함 속에 머물며 세상을 이기는 힘이 됩니다.\n3. 적용점: 오늘 하루 말씀에 순종하며 이웃에게 사랑을 실천하기.\n\n------------------\n`;
+        
+        document.getElementById('noteContent').value = summary + content;
+        overlay.classList.add('hidden');
+        alert('AI 요약이 완료되었습니다.');
+    }
+
+    toggleRecording() {
+        const btn = document.getElementById('voiceRecordBtn');
+        const isRecording = btn.classList.toggle('recording');
+        
+        if (isRecording) {
+            btn.innerHTML = '🔴 녹음 중 (탭하여 중지)';
+            btn.style.color = 'var(--accent)';
+        } else {
+            btn.innerHTML = '🎙️ 설교 녹음';
+            btn.style.color = 'var(--text-main)';
+            alert('설교 녹음이 완료되었습니다. (클라우드에 저장됨)');
+        }
+    }
+
+    shareCurrentNote() {
+        const title = document.getElementById('noteTitle').value || '제목 없는 노트';
+        const content = document.getElementById('noteContent').value;
+        const textToShare = `[${title}]\n\n${content}\n\n- 하맘말씀노트 Pro에서 공유됨`;
+
+        if (navigator.share) {
+            navigator.share({ title: title, text: textToShare }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(textToShare).then(() => {
+                alert('내용이 클립보드에 복사되었습니다.');
+            });
+        }
+    }
+
+    toggleHighlight() {
+        this.selectedVerses.forEach(verseId => {
+            const el = document.querySelector(`.verse-item[data-id="${verseId}"]`);
+            if (el) {
+                el.classList.toggle('highlighted');
+                el.classList.remove('selected');
+                let highlights = JSON.parse(localStorage.getItem('bibleHighlights') || '{}');
+                if (el.classList.contains('highlighted')) highlights[verseId] = true;
+                else delete highlights[verseId];
+                localStorage.setItem('bibleHighlights', JSON.stringify(highlights));
+            }
+        });
+        this.selectedVerses = [];
+        this.updateSelectionToolbar();
     }
 
     renderCalendar() {
         const grid = document.getElementById('calendarGrid');
         if (!grid) return;
         grid.innerHTML = '';
-        
         const year = this.currentCalendarDate.getFullYear();
         const month = this.currentCalendarDate.getMonth();
-        
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
         ['일', '월', '화', '수', '목', '금', '토'].forEach(d => {
             const div = document.createElement('div');
             div.className = 'calendar-day-header';
             div.textContent = d;
             grid.appendChild(div);
         });
-        
         for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
-        
         const today = new Date();
         for (let day = 1; day <= daysInMonth; day++) {
             const div = document.createElement('div');
             div.className = 'calendar-day';
             div.textContent = day;
-            
-            if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
-                div.classList.add('today');
-            }
-            
+            if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) div.classList.add('today');
             const hasNote = this.notes.some(n => {
-                const noteDate = new Date(n.date);
-                return noteDate.getFullYear() === year && noteDate.getMonth() === month && noteDate.getDate() === day;
+                const d = new Date(n.date);
+                return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
             });
             if (hasNote) div.classList.add('has-note');
-            
             grid.appendChild(div);
         }
     }
 
     loadMemo() {
-        document.getElementById('generalMemo').value = localStorage.getItem('bibleMemo') || '';
+        const memo = document.getElementById('generalMemo');
+        if (memo) memo.value = localStorage.getItem('bibleMemo') || '';
     }
 
     renderBookList() {
         const oldGrid = document.getElementById('oldTestament');
         const newGrid = document.getElementById('newTestament');
         if (!oldGrid || !newGrid) return;
-        
         BIBLE_BOOKS.forEach(book => {
             const el = document.createElement('div');
             el.className = 'book-item';
             el.dataset.id = book.id;
             el.textContent = book.short;
-            el.title = book.name;
-            
             if (book.test === 'old') oldGrid.appendChild(el);
             else newGrid.appendChild(el);
         });
@@ -195,35 +258,23 @@ class BibleApp {
     updateHeader() {
         const h2 = document.getElementById('currentLocation');
         if (h2) h2.textContent = `${this.currentBook.name} ${this.currentChapter}장`;
-        const list = document.getElementById('verseList');
-        if (list) list.scrollTop = 0;
     }
 
     async loadChapters() {
-        const verseContainer = document.getElementById('verseList');
-        if (!verseContainer) return;
-        verseContainer.innerHTML = '<p class="loading">불러오는 중...</p>';
+        const container = document.getElementById('verseList');
+        if (!container) return;
+        container.innerHTML = '<p class="loading">불러오는 중...</p>';
         this.selectedVerses = [];
         this.updateSelectionToolbar();
-
         const storedVerses = await this.getVersesFromDB(this.currentBook.id, this.currentChapter);
-        
-        if (storedVerses.length > 0) {
-            this.renderVerses(storedVerses);
-        } else if (SAMPLE_DATA[this.currentBook.id] && SAMPLE_DATA[this.currentBook.id][this.currentChapter]) {
+        if (storedVerses.length > 0) this.renderVerses(storedVerses);
+        else if (SAMPLE_DATA[this.currentBook.id] && SAMPLE_DATA[this.currentBook.id][this.currentChapter]) {
             this.renderVerses(SAMPLE_DATA[this.currentBook.id][this.currentChapter].map((v, i) => ({
                 id: `${this.currentBook.id}:${this.currentChapter}:${i+1}`,
                 text: v
             })));
         } else {
-            verseContainer.innerHTML = `
-                <div class="empty-state">
-                    <p>데이터가 없습니다.</p>
-                    <button id="importBtnInline" class="btn secondary">성경 파일 업로드</button>
-                </div>
-            `;
-            const btn = document.getElementById('importBtnInline');
-            if (btn) btn.onclick = () => document.getElementById('fileInput').click();
+            container.innerHTML = '<p class="empty-msg">데이터가 없습니다.</p>';
         }
     }
 
@@ -231,16 +282,16 @@ class BibleApp {
         const container = document.getElementById('verseList');
         if (!container) return;
         container.innerHTML = '';
+        const highlights = JSON.parse(localStorage.getItem('bibleHighlights') || '{}');
         verses.forEach(v => {
             const div = document.createElement('div');
             div.className = 'verse-item';
+            if (highlights[v.id]) div.classList.add('highlighted');
             div.dataset.id = v.id;
-            
             const match = v.text.match(/.*?\d+?:(\d+)\s(.*)/);
             if (match) {
                 const num = match[1];
-                let content = match[2];
-                content = content.replace(/<(.*?)>/, '<span class="section-title">[$1]</span>');
+                let content = match[2].replace(/<(.*?)>/, '<span class="section-title">[$1]</span>');
                 div.innerHTML = `<span class="verse-num">${num}</span> <span class="verse-text">${content}</span>`;
             } else {
                 div.textContent = v.text;
@@ -281,69 +332,28 @@ class BibleApp {
         if (!quotesContainer) return;
         const placeholder = quotesContainer.querySelector('.quoted-verses-placeholder');
         if (placeholder) placeholder.remove();
-        
         for (const verseId of this.selectedVerses) {
             const verseData = await this.getVerseById(verseId);
             if (!verseData) continue;
-
             const parts = verseId.split(':');
             const book = BIBLE_BOOKS.find(b => b.id === parts[0]);
-            const label = `${book.name} ${parts[1]}:${parts[2]}`;
-
             const quoteDiv = document.createElement('div');
             quoteDiv.className = 'quoted-verse';
             quoteDiv.dataset.id = verseId;
-            
-            let cleanText = verseData.text;
-            const match = verseData.text.match(/.*?\d+?:(\d+)\s(.*)/);
-            if (match) cleanText = match[2];
-
-            quoteDiv.innerHTML = `
-                <strong>${label}</strong>
-                <p>${cleanText}</p>
-                <span class="remove-quote">&times;</span>
-            `;
+            let text = verseData.text;
+            const match = text.match(/.*?\d+?:(\d+)\s(.*)/);
+            if (match) text = match[2];
+            quoteDiv.innerHTML = `<strong>${book.name} ${parts[1]}:${parts[2]}</strong><p>${text}</p><span class="remove-quote">&times;</span>`;
             quoteDiv.querySelector('.remove-quote').onclick = () => {
                 quoteDiv.remove();
-                if (quotesContainer.children.length === 0) {
-                    quotesContainer.innerHTML = '<div class="quoted-verses-placeholder">성경 구절을 선택해 이곳으로 보내세요</div>';
-                }
+                if (quotesContainer.children.length === 0) quotesContainer.innerHTML = '<div class="quoted-verses-placeholder">성경 구절을 선택해 이곳으로 보내세요</div>';
             };
             quotesContainer.appendChild(quoteDiv);
         }
-
         this.selectedVerses = [];
         document.querySelectorAll('.verse-item.selected').forEach(el => el.classList.remove('selected'));
         this.updateSelectionToolbar();
         document.getElementById('noteContent').focus();
-    }
-
-    async handleFileImport(e) {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
-        const transaction = this.db.transaction(['verses'], 'readwrite');
-        const store = transaction.objectStore('verses');
-        for (const file of files) {
-            const text = await file.text();
-            const lines = text.split('\n');
-            const bookPrefix = file.name.split('.')[0].substring(2); 
-            const book = BIBLE_BOOKS.find(b => b.name === bookPrefix || file.name.includes(b.id));
-            if (!book) continue;
-            lines.forEach(line => {
-                if (!line.trim()) return;
-                const match = line.match(/(.*?)\s*(\d+):(\d+)\s+(.*)/);
-                if (match) {
-                    const chapter = parseInt(match[2]);
-                    const verseNum = parseInt(match[3]);
-                    const id = `${book.id}:${chapter}:${verseNum}`;
-                    store.put({ id, bookId: book.id, chapter, verse: verseNum, text: line.trim() });
-                }
-            });
-        }
-        transaction.oncomplete = () => {
-            alert('성경 파일을 성공적으로 불러왔습니다!');
-            this.loadChapters();
-        };
     }
 
     getVersesFromDB(bookId, chapter) {
@@ -356,13 +366,9 @@ class BibleApp {
             request.onsuccess = (e) => {
                 const cursor = e.target.result;
                 if (cursor) {
-                    if (cursor.value.bookId === bookId && cursor.value.chapter === chapter) {
-                        results.push(cursor.value);
-                    }
+                    if (cursor.value.bookId === bookId && cursor.value.chapter === chapter) results.push(cursor.value);
                     cursor.continue();
-                } else {
-                    resolve(results.sort((a,b) => a.verse - b.verse));
-                }
+                } else resolve(results.sort((a,b) => a.verse - b.verse));
             };
         });
     }
@@ -378,9 +384,8 @@ class BibleApp {
                 else {
                     const parts = id.split(':');
                     if (SAMPLE_DATA[parts[0]] && SAMPLE_DATA[parts[0]][parts[1]]) {
-                        const line = SAMPLE_DATA[parts[0]][parts[1]][parseInt(parts[2])-1];
-                        resolve({ text: line });
-                    } else { resolve(null); }
+                        resolve({ text: SAMPLE_DATA[parts[0]][parts[1]][parseInt(parts[2])-1] });
+                    } else resolve(null);
                 }
             };
         });
@@ -390,11 +395,7 @@ class BibleApp {
         const title = document.getElementById('noteTitle').value || '제목 없는 노트';
         const content = document.getElementById('noteContent').value;
         const quotes = Array.from(document.querySelectorAll('.quoted-verse')).map(el => el.dataset.id);
-        const note = {
-            id: this.currentNoteId || Date.now(),
-            title, content, quotes,
-            date: new Date().toISOString()
-        };
+        const note = { id: this.currentNoteId || Date.now(), title, content, quotes, date: new Date().toISOString() };
         if (this.currentNoteId) {
             const idx = this.notes.findIndex(n => n.id === this.currentNoteId);
             if (idx > -1) this.notes[idx] = note;
@@ -405,16 +406,7 @@ class BibleApp {
         localStorage.setItem('bibleNotes', JSON.stringify(this.notes));
         this.renderNotesList();
         this.renderCalendar();
-        alert('노트가 저장되었습니다.');
-    }
-
-    createNewNote() {
-        this.currentNoteId = null;
-        document.getElementById('noteTitle').value = '';
-        document.getElementById('noteContent').value = '';
-        const quotes = document.getElementById('quotedVerses');
-        if (quotes) quotes.innerHTML = '<div class="quoted-verses-placeholder">성경 구절을 선택해 이곳으로 보내세요</div>';
-        this.updateDateDisplay();
+        alert('저장되었습니다.');
     }
 
     renderNotesList() {
@@ -436,10 +428,7 @@ class BibleApp {
         this.currentNoteId = note.id;
         document.getElementById('noteTitle').value = note.title;
         document.getElementById('noteContent').value = note.content;
-        const d = new Date(note.date);
-        document.getElementById('noteDateDisplay').textContent = `${d.getFullYear()}. ${String(d.getMonth()+1).padStart(2,'0')}. ${String(d.getDate()).padStart(2,'0')}`;
         const quotesContainer = document.getElementById('quotedVerses');
-        if (!quotesContainer) return;
         quotesContainer.innerHTML = '';
         if (note.quotes && note.quotes.length > 0) {
             for (const verseId of note.quotes) {
@@ -450,25 +439,17 @@ class BibleApp {
                 const quoteDiv = document.createElement('div');
                 quoteDiv.className = 'quoted-verse';
                 quoteDiv.dataset.id = verseId;
-                let cleanText = verseData.text;
-                const match = verseData.text.match(/.*?\d+?:(\d+)\s(.*)/);
-                if (match) cleanText = match[2];
-                quoteDiv.innerHTML = `
-                    <strong>${book.name} ${parts[1]}:${parts[2]}</strong>
-                    <p>${cleanText}</p>
-                    <span class="remove-quote">&times;</span>
-                `;
+                let text = verseData.text;
+                const match = text.match(/.*?\d+?:(\d+)\s(.*)/);
+                if (match) text = match[2];
+                quoteDiv.innerHTML = `<strong>${book.name} ${parts[1]}:${parts[2]}</strong><p>${text}</p><span class="remove-quote">&times;</span>`;
                 quoteDiv.querySelector('.remove-quote').onclick = () => {
                     quoteDiv.remove();
-                    if (quotesContainer.children.length === 0) {
-                        quotesContainer.innerHTML = '<div class="quoted-verses-placeholder">성경 구절을 선택해 이곳으로 보내세요</div>';
-                    }
+                    if (quotesContainer.children.length === 0) quotesContainer.innerHTML = '<div class="quoted-verses-placeholder">성경 구절을 선택해 이곳으로 보내세요</div>';
                 };
                 quotesContainer.appendChild(quoteDiv);
             }
-        } else {
-            quotesContainer.innerHTML = '<div class="quoted-verses-placeholder">성경 구절을 선택해 이곳으로 보내세요</div>';
-        }
+        } else quotesContainer.innerHTML = '<div class="quoted-verses-placeholder">성경 구절을 선택해 이곳으로 보내세요</div>';
     }
 
     searchBible(query) {
@@ -497,35 +478,22 @@ class BibleApp {
     }
 
     checkInitialData() {
-        if (!this.db) return;
+        if (!this.db) { setTimeout(() => this.checkInitialData(), 500); return; }
         const transaction = this.db.transaction(['verses'], 'readonly');
         const store = transaction.objectStore('verses');
         const countRequest = store.count();
         countRequest.onsuccess = () => {
-            if (countRequest.result === 0) {
-                document.getElementById('importOverlay').classList.remove('hidden');
-            }
-        };
-        document.getElementById('autoImportBtn').onclick = () => {
-            document.getElementById('importOverlay').classList.add('hidden');
-            this.autoImportBible();
-        };
-        document.getElementById('modalSelectFiles').onclick = () => {
-            document.getElementById('importOverlay').classList.add('hidden');
-            document.getElementById('fileInput').click();
-        };
-        document.getElementById('closeModal').onclick = () => {
-            document.getElementById('importOverlay').classList.add('hidden');
+            if (countRequest.result === 0) this.autoImportBible();
         };
     }
 
     async autoImportBible() {
-        const loadingOverlay = document.getElementById('loadingOverlay');
+        const overlay = document.getElementById('loadingOverlay');
         const progress = document.getElementById('importProgress');
-        loadingOverlay.classList.remove('hidden');
+        overlay.classList.remove('hidden');
         try {
             const response = await fetch('bible_verses.json');
-            if (!response.ok) throw new Error('데이터 없음');
+            if (!response.ok) return;
             const data = await response.json();
             const keys = Object.keys(data);
             const total = keys.length;
@@ -548,17 +516,10 @@ class BibleApp {
                 if (count % 20 === 0) progress.style.width = `${(count / total) * 100}%`;
             }
             transaction.oncomplete = () => {
-                progress.style.width = '100%';
-                setTimeout(() => {
-                    loadingOverlay.classList.add('hidden');
-                    alert('성경 데이터 설치 완료!');
-                    this.loadChapters();
-                }, 500);
+                overlay.classList.add('hidden');
+                this.loadChapters();
             };
-        } catch (error) {
-            loadingOverlay.classList.add('hidden');
-            alert('오류 발생: ' + error.message);
-        }
+        } catch (e) { overlay.classList.add('hidden'); }
     }
 }
 

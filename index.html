@@ -3,43 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>말씀공간 Pro - 프리미엄 성경노트</title>
+    <title>하맘말씀노트 Pro - 하이엔드 성경노트</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Pretendard:wght@100..900&display=swap" rel="stylesheet">
 </head>
-<body class="dark-mode">
+<body class="silver-mode">
     <div id="app">
         
         <!-- Navigation Sidebar -->
         <aside id="sidebar">
             <div class="logo">
-                <div class="logo-icon">✝</div>
-                <h1>말씀공간</h1>
-                <p>Bible Note Pro</p>
+                <div class="logo-icon">🌿</div>
+                <h1>하맘말씀노트</h1>
+                <p>Premium Bible Note</p>
             </div>
             
             <div class="search-bar">
                 <input type="text" id="bibleSearch" placeholder="성경 검색 (예: 창 1:1)">
             </div>
-
+ 
             <nav id="bookList">
                 <div class="testament-header">구약성경</div>
                 <div id="oldTestament" class="books-grid"></div>
                 <div class="testament-header">신약성경</div>
                 <div id="newTestament" class="books-grid"></div>
             </nav>
-
+ 
             <div class="sidebar-footer">
                 <div class="theme-switch" style="margin-bottom: 10px; display: flex; gap: 5px;">
-                    <button id="darkThemeBtn" class="btn-sm active">Dark</button>
-                    <button id="silverThemeBtn" class="btn-sm">Silver</button>
+                    <button id="darkThemeBtn" class="btn-sm">Dark</button>
+                    <button id="silverThemeBtn" class="btn-sm active">Silver</button>
                 </div>
-                <button id="importBtn" class="btn secondary">성경 파일 불러오기</button>
+                <button id="importBtn" class="btn secondary">성경 데이터 불러오기</button>
                 <input type="file" id="fileInput" multiple hidden accept=".txt">
-                <p class="copyright">© 2026 말슴공간 Pro</p>
+                <div class="app-version">Version 2.0 (Powered by AI)</div>
+                <p class="copyright">© 2026 하맘 Pro</p>
             </div>
         </aside>
-
+ 
         <!-- Main Content Area -->
         <main id="mainContent">
             <!-- Bible Viewer Pane -->
@@ -53,18 +54,19 @@
                     </div>
                 </header>
                 <div id="verseList" class="verse-container">
-                    <p class="empty-msg">성경 책을 선택하거나 파일을 불러오세요.</p>
+                    <!-- Verses load here -->
                 </div>
                 
                 <div id="selectionToolbar" class="selection-toolbar hidden">
                     <span id="selectedCount">0개 선택됨</span>
-                    <button id="addSelectedToNote" class="btn primary">노트로 보내기</button>
+                    <button id="addSelectedToNote" class="btn primary">노트로 본문 전송</button>
+                    <button id="highlightSelected" class="btn secondary">✨ 하이라이트</button>
                 </div>
             </section>
-
+ 
             <!-- Divider -->
             <div class="divider"></div>
-
+ 
             <!-- Bible Note Pane -->
             <section id="notePane" class="pane">
                 <header class="pane-header">
@@ -75,26 +77,30 @@
                         </div>
                     </div>
                     <div class="note-actions">
-                        <button id="saveNote" class="btn primary">저장하기</button>
-                        <button id="newNote" class="btn secondary">새 설교노트</button>
+                        <button id="saveNote" class="btn primary">저장</button>
+                        <button id="shareNote" class="btn secondary">공유</button>
                     </div>
                 </header>
-
+ 
+                <!-- Premium Feature Bar -->
+                <div class="feature-bar">
+                    <button id="aiSummaryBtn" class="feature-btn">🤖 AI 요약</button>
+                    <button id="notebookLMBtn" class="feature-btn">📖 NotebookLM</button>
+                    <button id="voiceRecordBtn" class="feature-btn">🎙️ 설교 녹음</button>
+                </div>
+ 
                 <div class="note-editor-wrapper">
                     <div class="note-editor-container">
-                        <!-- Quoted Verses Section -->
                         <div id="quotedVerses" class="quoted-verses-list">
                             <div class="quoted-verses-placeholder">성경 구절을 선택해 이곳으로 보내세요</div>
                         </div>
                         
-                        <!-- Rich Text Area -->
                         <div class="content-area">
                             <textarea id="noteContent" placeholder="여기에 설교 내용을 기록하세요..."></textarea>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Bottom Analytics & List -->
                 <div class="note-footer-tabs">
                     <div class="note-list-mini">
                         <div class="footer-tab-header">최근 설교 목록</div>
@@ -104,7 +110,7 @@
                     <div class="footer-details">
                         <div class="memo-mini">
                             <div class="footer-tab-header">오늘의 메모</div>
-                            <textarea id="generalMemo" placeholder="간단한 메모..."></textarea>
+                            <textarea id="generalMemo" placeholder="기타 영감이나 기도 제목을 적어보세요..."></textarea>
                         </div>
                         <div class="calendar-mini">
                             <div id="calendarGrid" class="calendar-mini-grid"></div>
@@ -114,30 +120,18 @@
             </section>
         </main>
     </div>
-
-    <!-- Modals / Overlays -->
-    <div id="importOverlay" class="overlay hidden">
-        <div class="modal">
-            <h3>성경 데이터 불러오기</h3>
-            <p>개역개정 성경 데이터를 자동으로 설정하거나 파일을 직접 선택할 수 있습니다.</p>
-            <button id="autoImportBtn" class="btn primary">개역개정 자동 설정 (추천)</button>
-            <button id="modalSelectFiles" class="btn secondary">파일 직접 선택하기</button>
-            <button id="closeModal" class="btn text">나중에 하기</button>
-        </div>
-    </div>
-
-    <!-- Progress Overlay for Auto Import -->
+ 
+    <!-- Overlays -->
     <div id="loadingOverlay" class="overlay hidden">
         <div class="modal">
             <div class="spinner"></div>
-            <h3>성경 데이터를 불러오는 중...</h3>
-            <p>잠시만 기다려 주세요. (약 5~10초 소요)</p>
-            <div class="progress-bar-container">
+            <h3 id="loadingText">처리 중...</h3>
+            <div id="loadingProgress" class="progress-bar-container">
                 <div id="importProgress" class="progress-bar"></div>
             </div>
         </div>
     </div>
-
+ 
     <script type="module" src="app.js"></script>
 </body>
 </html>
