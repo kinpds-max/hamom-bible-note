@@ -24,6 +24,7 @@ class BibleApp {
         this.renderNotesList();
         this.renderCalendar();
         this.loadMemo();
+        this.switchTheme(localStorage.getItem('bibleTheme') || 'dark');
         
         // Load default view
         this.switchBook(this.currentBook.id);
@@ -72,10 +73,6 @@ class BibleApp {
         document.getElementById('verseList').addEventListener('click', (e) => this.handleVerseClick(e));
         document.getElementById('addSelectedToNote').addEventListener('click', () => {
             this.addSelectedToNote();
-            // Automatically switch to note view on mobile
-            if (window.innerWidth <= 768) {
-                this.toggleMobileView(true);
-            }
         });
 
         // Note actions
@@ -87,9 +84,6 @@ class BibleApp {
             if (e.key === 'Enter') this.searchBible(e.target.value);
         });
 
-        // Mobile Toggle
-        const toggleBtn = document.getElementById('toggleView');
-        toggleBtn.addEventListener('click', () => this.toggleMobileView());
 
         // Calendar Nav
         document.getElementById('prevMonth').onclick = () => {
@@ -105,20 +99,24 @@ class BibleApp {
         document.getElementById('generalMemo').addEventListener('input', (e) => {
             localStorage.setItem('bibleMemo', e.target.value);
         });
+        // Theme Toggles
+        document.getElementById('darkThemeBtn').onclick = () => this.switchTheme('dark');
+        document.getElementById('silverThemeBtn').onclick = () => this.switchTheme('silver');
     }
 
-    toggleMobileView(forceToNote = false) {
-        const app = document.getElementById('app');
-        const btn = document.getElementById('toggleView');
-        
-        if (forceToNote) {
-            app.classList.add('show-note');
-            btn.textContent = '성경 보기';
+    switchTheme(theme) {
+        if (theme === 'silver') {
+            document.body.classList.add('silver-mode');
+            document.getElementById('silverThemeBtn').classList.add('active');
+            document.getElementById('darkThemeBtn').classList.remove('active');
         } else {
-            const isShowingNote = app.classList.toggle('show-note');
-            btn.textContent = isShowingNote ? '성경 보기' : '노트 모드로 전환';
+            document.body.classList.remove('silver-mode');
+            document.getElementById('darkThemeBtn').classList.add('active');
+            document.getElementById('silverThemeBtn').classList.remove('active');
         }
+        localStorage.setItem('bibleTheme', theme);
     }
+
 
     renderCalendar() {
         const grid = document.getElementById('calendarGrid');

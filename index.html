@@ -9,10 +9,6 @@
 </head>
 <body class="dark-mode">
     <div id="app">
-        <!-- View Toggle for Mobile -->
-        <div class="view-toggle-mobile">
-            <button id="toggleView" class="btn primary">노트 모드로 전환</button>
-        </div>
         
         <!-- Navigation Sidebar -->
         <aside id="sidebar">
@@ -34,8 +30,13 @@
             </nav>
 
             <div class="sidebar-footer">
+                <div class="theme-switch" style="margin-bottom: 10px; display: flex; gap: 5px;">
+                    <button id="darkThemeBtn" class="btn-sm active">Dark</button>
+                    <button id="silverThemeBtn" class="btn-sm">Silver</button>
+                </div>
                 <button id="importBtn" class="btn secondary">성경 파일 불러오기</button>
-                <input type="file" id="fileInput" multiple accept=".txt" style="display: none;">
+                <input type="file" id="fileInput" multiple hidden accept=".txt">
+                <p class="copyright">© 2026 말슴공간 Pro</p>
             </div>
         </aside>
 

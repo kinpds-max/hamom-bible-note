@@ -1,19 +1,29 @@
 :root {
+    --primary-color: #58a6ff;
+    --primary-glow: rgba(88, 166, 255, 0.3);
+    --secondary-color: #30363d;
     --bg-color: #0d1117;
     --sidebar-bg: rgba(22, 27, 34, 0.85);
-    --pane-bg: rgba(13, 17, 23, 0.7);
-    --primary-color: #58a6ff;
-    --primary-glow: rgba(88, 166, 255, 0.4);
-    --secondary-color: #30363d;
-    --accent-color: #238636;
+    --pane-bg: rgba(22, 27, 34, 0.7);
     --text-main: #c9d1d9;
     --text-sub: #8b949e;
-    --border-color: rgba(48, 54, 61, 0.7);
-    --hover-bg: rgba(56, 139, 253, 0.1);
-    --selected-bg: rgba(56, 139, 253, 0.2);
-    --sidebar-width: 250px;
+    --border-color: rgba(240, 246, 252, 0.1);
+    --selection-bg: rgba(88, 166, 255, 0.15);
     --glass-blur: 20px;
     --transition-speed: 0.25s;
+}
+
+.silver-mode {
+    --primary-color: #007aff;
+    --primary-glow: rgba(0, 122, 255, 0.3);
+    --secondary-color: #ffffff;
+    --bg-color: #f5f7fa;
+    --sidebar-bg: rgba(255, 255, 255, 0.85);
+    --pane-bg: rgba(255, 255, 255, 0.75);
+    --text-main: #1d1d1f;
+    --text-sub: #86868b;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --selection-bg: rgba(0, 122, 255, 0.1);
 }
 
 @keyframes fadeIn {
@@ -609,55 +619,75 @@ nav::-webkit-scrollbar-thumb {
     color: var(--text-main);
 }
 
-/* Mobile Responsive */
+/* Mobile Responsive - Stacked Layout (Reverting from Flip) */
 @media (max-width: 768px) {
     #app {
         flex-direction: column;
+        overflow-y: auto;
     }
     
     #sidebar {
-        display: none; /* Can be toggled with a burger menu if needed */
+        display: none;
     }
 
     .view-toggle-mobile {
-        display: block;
+        display: none; /* Removed flip toggle */
     }
 
     #mainContent {
-        height: calc(100vh - 0px);
-        perspective: 1000px;
+        flex-direction: column;
+        height: auto;
+        min-height: 200vh; /* Allow scrolling between panes */
     }
 
     #biblePane, #notePane {
-        position: absolute;
-        top: 0;
-        left: 0;
+        position: relative;
         width: 100%;
-        height: 100%;
-        transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        backface-visibility: hidden;
+        height: 100vh;
+        transform: none !important;
+        backface-visibility: visible;
+        border-bottom: 2px solid var(--border-color);
     }
 
-    /* Side Switch Effect */
-    #biblePane {
-        z-index: 2;
-    }
-    
-    #notePane {
-        z-index: 1;
-        transform: rotateY(180deg);
-    }
-
-    #app.show-note #biblePane {
-        transform: rotateY(-180deg);
-    }
-
-    #app.show-note #notePane {
-        transform: rotateY(0deg);
-        z-index: 2;
+    /* Fixed Bottom Memo Frame */
+    .note-footer-content {
+        padding: 20px;
+        background: var(--pane-bg);
+        border-top: 1px solid var(--border-color);
     }
 
     .divider {
         display: none;
     }
+}
+
+/* Theme Toggle Button */
+.theme-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.theme-switch .btn-sm {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+}
+
+body.silver-mode .pane {
+    box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+}
+
+body.silver-mode .book-item:hover {
+    background: rgba(0, 122, 255, 0.1);
+    color: var(--primary-color);
+}
+
+body.silver-mode .verse-item:hover {
+    background: rgba(0, 122, 255, 0.05);
+}
+
+body.silver-mode .verse-item.selected {
+    background: var(--selection-bg);
+    border-left-color: var(--primary-color);
 }
