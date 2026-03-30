@@ -11,6 +11,7 @@ let BIBLE_BOOKS = [];
 let ALL_VERSES = {};
 let ALL_VERSES_NIV = {};
 let ALL_VERSES_EASY = {};
+let ALL_STORY_DATA = [];
 let IS_LOADING = true;
 
 // --- Note Engine ---
@@ -63,17 +64,19 @@ class NoteApp {
                 <p>성경 데이터를 불러오는 중...</p>
             </div>`;
 
-        const [booksRes, versesRes, nivRes, easyRes] = await Promise.all([
+        const [booksRes, versesRes, nivRes, easyRes, storyRes] = await Promise.all([
             fetch('bible_books.json'),
             fetch('bible_verses.json'),
             fetch('bible_verses_niv.json'),
-            fetch('bible_verses_easy.json')
+            fetch('bible_verses_easy.json'),
+            fetch('bible_story.json').catch(() => null)
         ]);
 
         BIBLE_BOOKS = await booksRes.json();
         ALL_VERSES = await versesRes.json();
         ALL_VERSES_NIV = await nivRes.json();
         ALL_VERSES_EASY = await easyRes.json();
+        if (storyRes) ALL_STORY_DATA = await storyRes.json();
         IS_LOADING = false;
 
         this.dom.bookSelect.innerHTML = '<option value="">성경 선택</option>';
@@ -440,6 +443,11 @@ class NoteApp {
                 displayContent = `<p class="verse-text niv">${nivText}</p>`;
             } else if (this.currentTranslation === 'easy') {
                 displayContent = `<p class="verse-text easy">${easyText}</p>`;
+            } else if (this.currentTranslation === 'story') {
+                // If story mode, we show stories related to this chapter if possible
+                // For now, let's just show a hint or a list of stories from the book
+                this.renderStoryList(book);
+                return;
             } else {
                 displayContent = `
                     <p class="verse-text">${text}</p>
@@ -462,6 +470,55 @@ class NoteApp {
             </label>
         `;
         }).join('');
+    }
+
+    renderStoryList(bookName) {
+        if (!ALL_STORY_DATA.length) {
+            this.dom.verseList.innerHTML = `
+                <div class="empty-state">
+                    <ion-icon name="cloud-offline-outline" class="empty-icon"></ion-icon>
+                    <p>이야기 데이터를 불러올 수 없습니다</p>
+                </div>`;
+            return;
+        }
+
+        // Filter stories by current book (simple keyword matching for now)
+        // Since we don't have metadata, let's just show relevant ones or allow search
+        const stories = ALL_STORY_DATA.filter(s => s.text.includes(bookName) || s.title.includes(bookName));
+        
+        if (stories.length === 0) {
+            // If no match, show all stories (searchable)
+            this.renderAllStories();
+            return;
+        }
+
+        this.dom.verseList.innerHTML = `
+            <div class="search-info">'${bookName}' 이야기 — ${stories.length}건</div>
+            ${this.buildStoryCards(stories)}
+        `;
+    }
+
+    renderAllStories() {
+        this.dom.verseList.innerHTML = `
+            <div class="search-info">전체 이야기 — ${ALL_STORY_DATA.length}건</div>
+            ${this.buildStoryCards(ALL_STORY_DATA.slice(0, 100))}
+            <div class="empty-hint">상단 검색창을 통해 더 많은 이야기를 찾아보세요</div>
+        `;
+    }
+
+    buildStoryCards(stories) {
+        return stories.map(story => `
+            <div class="story-card" onclick="this.classList.toggle('expanded')">
+                <div class="story-header">
+                    <span class="story-title-badge">이야기</span>
+                    <h3 class="story-title">${story.title}</h3>
+                    <ion-icon name="chevron-down-outline" class="story-chevron"></ion-icon>
+                </div>
+                <div class="story-body">
+                    <p class="story-text">${story.text}</p>
+                </div>
+            </div>
+        `).join('');
     }
 
     isVerseSelected(book, chap, num) {
