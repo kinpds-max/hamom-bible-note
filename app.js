@@ -395,6 +395,7 @@ class NoteApp {
     handleBookChange() {
         const bookName = this.dom.bookSelect.value;
         const book = BIBLE_BOOKS.find(b => b.name === bookName);
+        const prevChapterVal = this.dom.chapterSelect.value;
         
         if (this.currentTranslation === 'story') {
             this.dom.chapterSelect.innerHTML = '<option value="">이야기 선택</option>';
@@ -405,6 +406,14 @@ class NoteApp {
                 opt.textContent = `<${s.title}>`;
                 this.dom.chapterSelect.appendChild(opt);
             });
+            // Try to match story index with chapter number if available
+            if (prevChapterVal && !isNaN(prevChapterVal)) {
+                // If chapter was 1, it might map to story index 0
+                const targetIdx = parseInt(prevChapterVal) - 1;
+                if (this.dom.chapterSelect.querySelector(`option[value="${targetIdx}"]`)) {
+                    this.dom.chapterSelect.value = targetIdx;
+                }
+            }
         } else {
             this.dom.chapterSelect.innerHTML = '<option value="">장</option>';
             if (book) {
@@ -413,6 +422,15 @@ class NoteApp {
                     opt.value = i;
                     opt.textContent = i + '장';
                     this.dom.chapterSelect.appendChild(opt);
+                }
+                // Try to restore previous value
+                if (prevChapterVal) {
+                    let targetVal = prevChapterVal;
+                    // If switching from story (0-based) to chapters (1-based)
+                    if (this.currentTranslation !== 'story' && !isNaN(prevChapterVal) && this.dom.chapterSelect.innerHTML.includes('이야기')) { 
+                       // handle specifically if needed, but let's just try to re-apply
+                    }
+                    this.dom.chapterSelect.value = targetVal;
                 }
             }
         }
@@ -602,16 +620,32 @@ class NoteApp {
 
     speakText(text) {
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Remove HTML tags for clean reading
+        const plainText = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        
+        const utterance = new SpeechSynthesisUtterance(plainText);
         utterance.lang = 'ko-KR';
         utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        
+        // Find best Korean voice if possible
+        const voices = window.speechSynthesis.getVoices();
+        const koVoice = voices.find(v => v.lang.includes('ko') || v.lang.includes('KO'));
+        if (koVoice) utterance.voice = koVoice;
         
         utterance.onstart = () => {
-            this.dom.ttsBtn.classList.add('active');
+             const btn = this.activeTab === 'tab-note' ? this.dom.ttsBtn : this.dom.bibleTTSBtn;
+             if (btn) btn.classList.add('active');
         };
         
-        utterance.onend = () => this.stopTTS();
-        utterance.onerror = () => this.stopTTS();
+        const stop = () => {
+             const btn = this.activeTab === 'tab-note' ? this.dom.ttsBtn : this.dom.bibleTTSBtn;
+             if (btn) btn.classList.remove('active');
+        };
+
+        utterance.onend = stop;
+        utterance.onerror = stop;
 
         window.speechSynthesis.speak(utterance);
     }
@@ -676,15 +710,19 @@ class NoteApp {
 
         let actualText = krText;
         if (this.currentTranslation === 'easy') actualText = easyText || krText;
-        if (this.currentTranslation === 'niv') actualText = nivText || krText;
-        if (this.currentTranslation === 'both') {
+        else if (this.currentTranslation === 'niv') actualText = nivText || krText;
+        else if (this.currentTranslation === 'story') actualText = krText; // story usually only has one text
+        else if (this.currentTranslation === 'both') {
             const selectedVers = Array.from(document.querySelectorAll('#together-settings input:checked')).map(i => i.value);
             actualText = '';
             if (selectedVers.includes('kr') && krText) actualText += krText + '<br>';
-            if (selectedVers.includes('easy') && easyText) actualText += easyText + '<br>';
-            if (selectedVers.includes('niv') && nivText) actualText += nivText + '<br>';
+            if (selectedVers.includes('easy') && easyText) actualText += (easyText + '<br>');
+            if (selectedVers.includes('niv') && nivText) actualText += (nivText + '<br>');
             actualText = actualText.trim() || krText;
         }
+
+        // Clean up any double br or trailing br for the note
+        actualText = actualText.replace(/<br>\s*$/g, '').trim();
 
         if (checkbox.checked) {
             // Remove existing to replace with new text
