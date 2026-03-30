@@ -45,19 +45,26 @@
 
         <!-- ===== Meta Info Strip ===== -->
         <div class="meta-strip">
-            <div class="meta-chip active" id="meta-date-chip">
+            <div class="meta-chip">
                 <ion-icon name="calendar-outline"></ion-icon>
                 <input type="date" id="note-date">
             </div>
-            <div class="meta-chip" id="meta-theme-chip">
-                <ion-icon name="pricetag-outline"></ion-icon>
+            <div class="meta-chip">
+                <ion-icon name="bookmark-outline"></ion-icon>
                 <input type="text" id="note-theme" placeholder="말씀 주제">
             </div>
+            <div class="meta-chip">
+                <ion-icon name="person-outline"></ion-icon>
+                <input type="text" id="note-preacher" placeholder="설교자">
+            </div>
             <select id="note-category" class="category-select">
-                <option value="sermon">🎙 설교</option>
-                <option value="faith">✝ 신앙</option>
-                <option value="prayer">🙏 기도</option>
+                <option value="sermon">주일예배</option>
+                <option value="faith">수요예배</option>
+                <option value="prayer">금요철야</option>
+                <option value="dawn">새벽예배</option>
+                <option value="etc">기타</option>
             </select>
+            <div id="auto-save-indicator" class="save-dot"></div>
         </div>
 
         <!-- ===== Content Area (Tab-Based) ===== -->
@@ -122,17 +129,26 @@
                     </div>
                 </div>
 
-                <!-- Floating UI Actions -->
-                <div id="bible-fab-container" class="fab-container" style="display:none;">
-                    <button id="push-to-note-btn" class="fab-push">
-                        <ion-icon name="paper-plane-outline"></ion-icon>
-                        <span id="push-count">0</span>구절 노트로 보내기
-                    </button>
-                    <div class="fab-secondary-actions">
-                        <button id="bible-highlight-btn" class="fab-mini" title="하이라이트">
+                <!-- Floating UI Toolset -->
+                <div id="bible-fab-container" class="fab-container" style="display: none;">
+                    <div class="fab-toolbar">
+                        <button id="push-to-note-btn" class="fab-tool-btn" title="구절 선택">
+                            <ion-icon name="list-outline"></ion-icon>
+                            <span id="push-count" class="tool-badge">0</span>
+                        </button>
+                        <button id="bible-memo-btn" class="fab-tool-btn" title="구절 메모">
                             <ion-icon name="brush-outline"></ion-icon>
                         </button>
-                        <button id="bible-share-btn" class="fab-mini" title="공유">
+                        <button id="bible-recite-btn" class="fab-tool-btn" title="암송 등록">
+                            <ion-icon name="journal-outline"></ion-icon>
+                        </button>
+                        <button id="bible-highlight-btn" class="fab-tool-btn" title="하이라이트">
+                            <ion-icon name="color-palette-outline"></ion-icon>
+                        </button>
+                        <button id="bible-tts-btn" class="fab-tool-btn" title="듣기">
+                            <ion-icon name="volume-medium-outline"></ion-icon>
+                        </button>
+                        <button id="bible-share-btn" class="fab-tool-btn" title="공유">
                             <ion-icon name="share-social-outline"></ion-icon>
                         </button>
                     </div>
