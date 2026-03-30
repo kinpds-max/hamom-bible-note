@@ -131,6 +131,15 @@
 
                 <!-- Floating UI Toolset -->
                 <div id="bible-fab-container" class="fab-container" style="display: none;">
+                    <!-- Color Picker Panel -->
+                    <div id="highlight-color-picker" class="color-picker-panel" style="display: none; padding: 10px; background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 10px; position: absolute; bottom: 100%; right: 0; display: none; gap: 10px;">
+                        <button class="color-dot" style="background-color: #ffeb3b; width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer;" onclick="window.app.applyHighlightColor('#ffeb3b')"></button>
+                        <button class="color-dot" style="background-color: #ffcdd2; width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer;" onclick="window.app.applyHighlightColor('#ffcdd2')"></button>
+                        <button class="color-dot" style="background-color: #c8e6c9; width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer;" onclick="window.app.applyHighlightColor('#c8e6c9')"></button>
+                        <button class="color-dot" style="background-color: #bbdefb; width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer;" onclick="window.app.applyHighlightColor('#bbdefb')"></button>
+                        <button class="color-dot" style="background-color: #e1bee7; width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer;" onclick="window.app.applyHighlightColor('#e1bee7')"></button>
+                    </div>
+
                     <div class="fab-toolbar">
                         <button id="push-to-note-btn" class="fab-tool-btn" title="구절 선택">
                             <ion-icon name="list-outline"></ion-icon>
@@ -142,7 +151,7 @@
                         <button id="bible-recite-btn" class="fab-tool-btn" title="암송 등록">
                             <ion-icon name="journal-outline"></ion-icon>
                         </button>
-                        <button id="bible-highlight-btn" class="fab-tool-btn" title="하이라이트">
+                        <button id="bible-highlight-btn" class="fab-tool-btn" title="형광펜">
                             <ion-icon name="color-palette-outline"></ion-icon>
                         </button>
                         <button id="bible-tts-btn" class="fab-tool-btn" title="듣기">

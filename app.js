@@ -104,7 +104,10 @@ class NoteApp {
         
         this.dom.bibleTTSBtn.onclick = () => this.speakSelectedVerses();
         this.dom.bibleShareBtn.onclick = () => this.shareSelectedVerses();
-        this.dom.bibleHighlightBtn.onclick = () => this.highlightSelectedVerses();
+        this.dom.bibleHighlightBtn.onclick = () => {
+            const picker = document.getElementById('highlight-color-picker');
+            if (picker) picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+        };
         this.dom.bibleReciteBtn.onclick = () => this.markForRecitation();
         
         document.body.addEventListener('click', () => {
@@ -452,13 +455,27 @@ class NoteApp {
             const stories = ALL_STORY_DATA.filter(s => s.book === book);
             const story = stories[chapVal];
             if (story) {
+                const ref = `${book} 이야기:${parseInt(chapVal)+1}`;
+                const text = story.text;
+                const isSelected = this.isVerseSelected(book, '이야기', parseInt(chapVal)+1);
+                
                 this.dom.verseList.innerHTML = `
                     <div class="search-info">📖 이야기: ${book} / ${story.title}</div>
-                    <div class="story-card expanded">
-                        <div class="story-body" style="max-height: none; opacity: 1; padding: 20px;">
-                            <p class="story-text" style="font-size: 1.1rem;">${story.text}</p>
+                    <label class="verse-item ${isSelected ? 'selected' : ''}" style="display: flex; padding: 15px; margin-bottom: 10px; align-items: flex-start;">
+                        <input type="checkbox" class="verse-item-check"
+                               data-text="${this.escapeHtml(text)}"
+                               data-niv=""
+                               data-easy=""
+                               data-ref="${this.escapeHtml(ref)}"
+                               ${isSelected ? 'checked' : ''}
+                               onchange="window.app.toggleVerseSelection(this)"
+                               style="margin-right: 15px; margin-top: 5px;">
+                        <div class="story-card expanded" style="margin: 0; box-shadow: none; flex: 1;">
+                            <div class="story-body" style="max-height: none; opacity: 1; padding: 0;">
+                                <p class="story-text" style="font-size: 1.1rem; line-height: 1.6;">${text}</p>
+                            </div>
                         </div>
-                    </div>`;
+                    </label>`;
             }
             return;
         }
@@ -551,16 +568,26 @@ class NoteApp {
         navigator.share({ title: '오늘의 말씀', text: text }).catch(() => {});
     }
 
-    highlightSelectedVerses() {
-        if (!this.currentNote.verses.length) return;
+    applyHighlightColor(color) {
+        if (!this.currentNote.verses.length) {
+            alert('먼저 성경 구절을 체크해주세요.');
+            return;
+        }
         this.currentNote.verses.forEach(v => {
-            if (!this.highlights.some(h => h.ref === v.ref)) {
-                this.highlights.push(v);
+            const existingIdx = this.highlights.findIndex(h => h.ref === v.ref);
+            if (existingIdx >= 0) {
+                this.highlights[existingIdx].color = color;
+            } else {
+                this.highlights.push({ ...v, color: color });
             }
         });
         localStorage.setItem('bible_highlights', JSON.stringify(this.highlights));
         this.renderHighlights();
-        alert('선택한 구절에 형광펜이 적용되었습니다.');
+        
+        const picker = document.getElementById('highlight-color-picker');
+        if (picker) picker.style.display = 'none';
+        
+        alert('선택한 색상으로 형광펜이 적용되었습니다.');
         this.currentNote.verses = [];
         this.updatePushButton();
         this.renderVerses();
@@ -839,7 +866,7 @@ class NoteApp {
             return;
         }
         container.innerHTML = this.highlights.map(v => `
-            <div class="note-summary-item faith" style="border-left-color: #ffd700;">
+            <div class="note-summary-item faith" style="border-left-color: ${v.color || '#ffd700'};">
                 <h4>✨ ${v.ref}</h4>
                 <p>${v.text}</p>
                 <button onclick="window.app.removeHighlight('${v.ref}')" style="margin-top: 10px; background:none; border:none; color: #ff3b30; font-size: 0.9em; padding: 0; cursor:pointer;">삭제</button>
