@@ -291,6 +291,7 @@ class NoteApp {
     initDragSelection() {
         let isDragging = false;
         let dragMode = null;
+        let longPressTimer = null;
 
         const container = this.dom.verseList;
 
@@ -306,6 +307,7 @@ class NoteApp {
             }
         };
 
+        // --- Mouse Events ---
         container.addEventListener('mousedown', (e) => {
             const verseItem = e.target.closest('.verse-item');
             if (verseItem) {
@@ -318,23 +320,49 @@ class NoteApp {
         container.addEventListener('mouseover', (e) => onMove(e.target));
         document.addEventListener('mouseup', () => { isDragging = false; });
 
+        // --- Touch Events (with Long Press for scrolling protection) ---
         container.addEventListener('touchstart', (e) => {
             const verseItem = e.target.closest('.verse-item');
             if (verseItem) {
-                isDragging = true;
-                const cb = verseItem.querySelector('.verse-item-check');
-                dragMode = !cb.checked;
+                // Wait 400ms before starting drag selection
+                longPressTimer = setTimeout(() => {
+                    isDragging = true;
+                    if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback indicating drag is ready
+                    const cb = verseItem.querySelector('.verse-item-check');
+                    dragMode = !cb.checked; // Decide whether we are checking or unchecking
+                    
+                    // Immediately apply to the first item
+                    cb.checked = dragMode;
+                    this.toggleVerseSelection(cb);
+                }, 400);
             }
         }, { passive: true });
 
         container.addEventListener('touchmove', (e) => {
+            if (!isDragging && longPressTimer) {
+                // If they moved their finger before the long press triggered, it's a scroll. Cancel long press.
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+                return;
+            }
             if (!isDragging) return;
+            
+            // Prevent scrolling ONLY when drag selection is active
+            if (e.cancelable) e.preventDefault();
+
             const touch = e.touches[0];
             const el = document.elementFromPoint(touch.clientX, touch.clientY);
             onMove(el);
-        }, { passive: true });
+        }, { passive: false }); // Needs false to use preventDefault
 
-        document.addEventListener('touchend', () => { isDragging = false; });
+        container.addEventListener('touchend', () => { 
+            clearTimeout(longPressTimer);
+            isDragging = false; 
+        });
+        container.addEventListener('touchcancel', () => { 
+            clearTimeout(longPressTimer);
+            isDragging = false; 
+        });
     }
 
     openMenu() { this.dom.menuOverlay.classList.add('active'); }
