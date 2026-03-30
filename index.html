@@ -34,8 +34,8 @@
             <div class="top-bar-center">
                 <h1 class="app-title">
                     <span class="title-icon">✦</span>
-                    성경노트
-                    <span class="title-badge">Pro</span>
+                    하맘 성경노트
+                    <span class="title-badge">PRO</span>
                 </h1>
             </div>
             <div class="top-bar-right">
@@ -80,6 +80,21 @@
                             <option value="">장</option>
                         </select>
                     </div>
+                    <!-- Version Selector -->
+                    <div class="version-selector">
+                        <label class="version-chip">
+                            <input type="radio" name="translation" value="kr" checked>
+                            <span>개역개정</span>
+                        </label>
+                        <label class="version-chip">
+                            <input type="radio" name="translation" value="niv">
+                            <span>NIV</span>
+                        </label>
+                        <label class="version-chip">
+                            <input type="radio" name="translation" value="both">
+                            <span>같이보기</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div id="verse-list" class="verse-list">
@@ -89,11 +104,21 @@
                     </div>
                 </div>
 
-                <!-- Floating Push Button -->
-                <button id="push-to-note-btn" class="fab-push" style="display:none;">
-                    <ion-icon name="arrow-forward"></ion-icon>
-                    <span id="push-count">0</span>개 구절 노트로 보내기
-                </button>
+                <!-- Floating UI Actions -->
+                <div id="bible-fab-container" class="fab-container" style="display:none;">
+                    <button id="push-to-note-btn" class="fab-push">
+                        <ion-icon name="paper-plane-outline"></ion-icon>
+                        <span id="push-count">0</span>구절 노트로 보내기
+                    </button>
+                    <div class="fab-secondary-actions">
+                        <button id="bible-highlight-btn" class="fab-mini" title="하이라이트">
+                            <ion-icon name="brush-outline"></ion-icon>
+                        </button>
+                        <button id="bible-share-btn" class="fab-mini" title="공유">
+                            <ion-icon name="share-social-outline"></ion-icon>
+                        </button>
+                    </div>
+                </div>
             </section>
 
             <!-- Tab: Note Editor -->
@@ -102,6 +127,9 @@
                 <div class="note-toolbar">
                     <button id="record-btn" class="tool-btn" title="음성 녹음">
                         <ion-icon name="mic-outline"></ion-icon>
+                    </button>
+                    <button id="tts-btn" class="tool-btn" title="텍스트 읽어주기">
+                        <ion-icon name="volume-high-outline"></ion-icon>
                     </button>
                     <button id="bookmark-btn" class="tool-btn" title="책갈피">
                         <ion-icon name="bookmark-outline"></ion-icon>
@@ -112,7 +140,7 @@
                     <div class="toolbar-divider"></div>
                     <button id="ai-summary-btn" class="tool-btn ai" title="AI 요약">
                         <ion-icon name="sparkles-outline"></ion-icon>
-                        <span>AI</span>
+                        <span>AI 요약</span>
                     </button>
                     <button id="save-btn" class="tool-btn save" title="저장">
                         <ion-icon name="checkmark-circle"></ion-icon>
@@ -134,7 +162,7 @@
                 </div>
 
                 <!-- Rich Editor -->
-                <div class="editor-wrapper">
+                <div id="editor-container" class="editor-wrapper">
                     <div id="note-memo" class="note-editor-field" contenteditable="true"
                          data-placeholder="설교 내용이나 묵상 내용을 자유롭게 기록하세요..."></div>
                 </div>
@@ -185,7 +213,10 @@
 
         <!-- Footer Disclaimer -->
         <div class="app-footer">
-            <p><strong>하맘 성경노트 Pro</strong> | 1660-1195</p>
+            <div class="footer-bottom">
+                <span class="footer-brand">하맘 성경노트 PRO</span>
+                <span class="footer-info">하맘컨텐츠 1660-1195</span>
+            </div>
             <p class="disclaimer">비배포용 (테스트 목적)</p>
         </div>
     </div>
@@ -195,7 +226,7 @@
         <div class="modal-card">
             <div class="modal-handle"></div>
             <div class="modal-header">
-                <h2><ion-icon name="sparkles"></ion-icon> AI 요약</h2>
+                <h2><ion-icon name="sparkles"></ion-icon> AI 영적 통찰 요약</h2>
                 <button id="close-modal" class="modal-close-btn">
                     <ion-icon name="close-circle"></ion-icon>
                 </button>
@@ -205,7 +236,7 @@
             </div>
             <div class="modal-actions">
                 <button id="copy-summary-btn" class="action-btn primary">
-                    <ion-icon name="copy-outline"></ion-icon> 복사
+                    <ion-icon name="copy-outline"></ion-icon> 본문 복사
                 </button>
             </div>
         </div>

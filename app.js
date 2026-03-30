@@ -9,6 +9,7 @@
 // --- Bible Data State ---
 let BIBLE_BOOKS = [];
 let ALL_VERSES = {};
+let ALL_VERSES_NIV = {};
 let IS_LOADING = true;
 
 // --- Note Engine ---
@@ -28,6 +29,7 @@ class NoteApp {
         this.recognition = null;
         this.activeTab = 'tab-bible';
         this.versesAccordionOpen = true;
+        this.currentTranslation = 'kr';
 
         this.init();
     }
@@ -60,13 +62,15 @@ class NoteApp {
                 <p>성경 데이터를 불러오는 중...</p>
             </div>`;
 
-        const [booksRes, versesRes] = await Promise.all([
+        const [booksRes, versesRes, nivRes] = await Promise.all([
             fetch('bible_books.json'),
-            fetch('bible_verses.json')
+            fetch('bible_verses.json'),
+            fetch('bible_verses_niv.json')
         ]);
 
         BIBLE_BOOKS = await booksRes.json();
         ALL_VERSES = await versesRes.json();
+        ALL_VERSES_NIV = await nivRes.json();
         IS_LOADING = false;
 
         this.dom.bookSelect.innerHTML = '<option value="">성경 선택</option>';
@@ -100,14 +104,18 @@ class NoteApp {
             bookSelect: document.getElementById('book-select'),
             chapterSelect: document.getElementById('chapter-select'),
             verseList: document.getElementById('verse-list'),
+            bibleFabContainer: document.getElementById('bible-fab-container'),
             pushToNoteBtn: document.getElementById('push-to-note-btn'),
             pushCount: document.getElementById('push-count'),
+            bibleHighlightBtn: document.getElementById('bible-highlight-btn'),
+            bibleShareBtn: document.getElementById('bible-share-btn'),
 
             // Note Editor
             selectedVerses: document.getElementById('selected-verses'),
             noteMemo: document.getElementById('note-memo'),
             saveBtn: document.getElementById('save-btn'),
             recordBtn: document.getElementById('record-btn'),
+            ttsBtn: document.getElementById('tts-btn'),
             bookmarkBtn: document.getElementById('bookmark-btn'),
             highlightBtn: document.getElementById('highlight-btn'),
             aiSummaryBtn: document.getElementById('ai-summary-btn'),
@@ -134,7 +142,10 @@ class NoteApp {
 
             // Tab Bar
             tabBar: document.getElementById('tab-bar'),
-            contentArea: document.getElementById('content-area')
+            contentArea: document.getElementById('content-area'),
+
+            // Version Selector
+            translationRadios: document.getElementsByName('translation')
         };
 
         this.dom.dateInput.value = this.currentNote.date;
@@ -146,6 +157,18 @@ class NoteApp {
         this.dom.chapterSelect.onchange = () => this.renderVerses();
         this.dom.searchBtn.onclick = () => this.handleSearch();
         this.dom.bibleSearch.onkeypress = (e) => (e.key === 'Enter') && this.handleSearch();
+
+        // Translation Selector
+        this.dom.translationRadios.forEach(radio => {
+            radio.onchange = () => {
+                this.currentTranslation = radio.value;
+                if (this.dom.chapterSelect.value) {
+                    this.renderVerses();
+                } else if (this.dom.bibleSearch.value) {
+                    this.handleSearch();
+                }
+            };
+        });
 
         // Note Metadata
         ['dateInput', 'themeInput', 'categorySelect'].forEach(el => {
@@ -159,12 +182,20 @@ class NoteApp {
             this.triggerAutoSave();
         };
 
-        // Save
+        // Save & Push
         this.dom.saveBtn.onclick = () => this.saveNote(true);
         this.dom.pushToNoteBtn.onclick = () => this.handlePushToNote();
+        
+        // Bible FAB Secondary Actions
+        this.dom.bibleHighlightBtn.onclick = () => {
+            this.handlePushToNote();
+            setTimeout(() => this.applyHighlight(), 300);
+        };
+        this.dom.bibleShareBtn.onclick = () => this.handleShare();
 
         // Tools
         this.dom.recordBtn.onclick = () => this.toggleRecording();
+        this.dom.ttsBtn.onclick = () => this.toggleTTS();
         this.dom.bookmarkBtn.onclick = () => this.toggleBookmark();
         this.dom.highlightBtn.onclick = () => this.applyHighlight();
 
@@ -204,6 +235,9 @@ class NoteApp {
         document.querySelectorAll('.tab-panel').forEach(panel => {
             panel.classList.toggle('active', panel.id === tabId);
         });
+
+        // Stop TTS if switching away from note
+        if (tabId !== 'tab-note') this.stopTTS();
 
         // Haptic-like visual feedback
         if (navigator.vibrate) navigator.vibrate(10);
@@ -298,10 +332,22 @@ class NoteApp {
             for (const [key, verses] of Object.entries(ALL_VERSES)) {
                 if (count >= MAX_RESULTS) break;
                 const [bookName, chapter] = key.split('-');
+                const nivVerses = ALL_VERSES_NIV[key] || [];
+
                 verses.forEach((text, idx) => {
                     if (count >= MAX_RESULTS) return;
-                    if (text.includes(query)) {
-                        results.push({ book: bookName, chapter, verse: idx + 1, text });
+                    const nivText = nivVerses[idx] || '';
+                    const matchKr = text.includes(query);
+                    const matchNiv = nivText.toLowerCase().includes(query.toLowerCase());
+
+                    if (matchKr || matchNiv) {
+                        results.push({ 
+                            book: bookName, 
+                            chapter, 
+                            verse: idx + 1, 
+                            text, 
+                            nivText 
+                        });
                         count++;
                     }
                 });
@@ -318,19 +364,36 @@ class NoteApp {
 
             this.dom.verseList.innerHTML = `
                 <div class="search-info">'${query}' — ${results.length}건 발견</div>
-                ${results.map(res => `
-                    <div class="verse-item">
+                ${results.map(res => {
+                    const isSelected = this.isVerseSelected(res.book, res.chapter, res.verse);
+                    let displayContent = '';
+                    
+                    if (this.currentTranslation === 'kr') {
+                        displayContent = `<p class="verse-text">${res.text}</p>`;
+                    } else if (this.currentTranslation === 'niv') {
+                        displayContent = `<p class="verse-text niv">${res.nivText || 'N/A'}</p>`;
+                    } else {
+                        displayContent = `
+                            <p class="verse-text">${res.text}</p>
+                            <p class="verse-text niv">${res.nivText || 'N/A'}</p>
+                        `;
+                    }
+
+                    return `
+                    <label class="verse-item ${isSelected ? 'selected' : ''}">
                         <input type="checkbox" class="verse-item-check"
                                data-text="${this.escapeHtml(res.text)}"
+                               data-niv="${this.escapeHtml(res.nivText || '')}"
                                data-ref="${res.book} ${res.chapter}:${res.verse}"
-                               ${this.isVerseSelected(res.book, res.chapter, res.verse) ? 'checked' : ''}
+                               ${isSelected ? 'checked' : ''}
                                onchange="window.app.toggleVerseSelection(this)">
                         <div class="verse-item-content">
                             <span class="verse-ref">${res.book} ${res.chapter}:${res.verse}</span>
-                            <p class="verse-text">${res.text}</p>
+                            ${displayContent}
                         </div>
-                    </div>
-                `).join('')}`;
+                    </label>
+                    `;
+                }).join('')}`;
         }, 50);
     }
 
@@ -345,6 +408,7 @@ class NoteApp {
         const chap = this.dom.chapterSelect.value;
         const key = `${book}-${chap}`;
         const verses = ALL_VERSES[key];
+        const nivVerses = ALL_VERSES_NIV[key] || [];
 
         if (!verses) {
             this.dom.verseList.innerHTML = `
@@ -355,19 +419,37 @@ class NoteApp {
             return;
         }
 
-        this.dom.verseList.innerHTML = verses.map((text, idx) => `
-            <div class="verse-item">
+        this.dom.verseList.innerHTML = verses.map((text, idx) => {
+            const isSelected = this.isVerseSelected(book, chap, idx + 1);
+            const nivText = nivVerses[idx] || '';
+            let displayContent = '';
+
+            if (this.currentTranslation === 'kr') {
+                displayContent = `<p class="verse-text">${text}</p>`;
+            } else if (this.currentTranslation === 'niv') {
+                displayContent = `<p class="verse-text niv">${nivText}</p>`;
+            } else {
+                displayContent = `
+                    <p class="verse-text">${text}</p>
+                    <p class="verse-text niv">${nivText}</p>
+                `;
+            }
+
+            return `
+            <label class="verse-item ${isSelected ? 'selected' : ''}">
                 <input type="checkbox" class="verse-item-check"
                        data-text="${this.escapeHtml(text)}"
+                       data-niv="${this.escapeHtml(nivText)}"
                        data-ref="${book} ${chap}:${idx + 1}"
-                       ${this.isVerseSelected(book, chap, idx + 1) ? 'checked' : ''}
+                       ${isSelected ? 'checked' : ''}
                        onchange="window.app.toggleVerseSelection(this)">
                 <div class="verse-item-content">
                     <span class="verse-ref">${book} ${chap}:${idx + 1}</span>
-                    <p class="verse-text">${text}</p>
+                    ${displayContent}
                 </div>
-            </div>
-        `).join('');
+            </label>
+        `;
+        }).join('');
     }
 
     isVerseSelected(book, chap, num) {
@@ -377,13 +459,17 @@ class NoteApp {
     toggleVerseSelection(checkbox) {
         const ref = checkbox.dataset.ref;
         const text = checkbox.dataset.text;
+        const nivText = checkbox.dataset.niv;
+        const parent = checkbox.closest('.verse-item');
 
         if (checkbox.checked) {
             if (!this.currentNote.verses.find(v => v.ref === ref)) {
-                this.currentNote.verses.push({ ref, text });
+                this.currentNote.verses.push({ ref, text, nivText });
             }
+            if (parent) parent.classList.add('selected');
         } else {
             this.currentNote.verses = this.currentNote.verses.filter(v => v.ref !== ref);
+            if (parent) parent.classList.remove('selected');
         }
 
         this.updatePushButton();
@@ -394,10 +480,10 @@ class NoteApp {
     updatePushButton() {
         const count = this.currentNote.verses.length;
         if (count > 0) {
-            this.dom.pushToNoteBtn.style.display = 'flex';
+            this.dom.bibleFabContainer.style.display = 'flex';
             this.dom.pushCount.textContent = count;
         } else {
-            this.dom.pushToNoteBtn.style.display = 'none';
+            this.dom.bibleFabContainer.style.display = 'none';
         }
     }
 
@@ -407,22 +493,39 @@ class NoteApp {
             return;
         }
 
-        const verseText = this.currentNote.verses.map(v =>
-            `<p><strong>[${v.ref}]</strong> ${v.text}</p>`
-        ).join('');
+        const currentMemo = this.dom.noteMemo.innerHTML.trim();
+        const verseHtml = this.currentNote.verses.map(v => {
+            let content = `<strong>[${v.ref}]</strong> ${v.text}`;
+            if (v.nivText) {
+                content += `<br><span style="color: #666; font-size: 0.9em;">(NIV) ${v.nivText}</span>`;
+            }
+            return `<p>${content}</p>`;
+        }).join('');
 
-        const editor = this.dom.noteMemo;
-        editor.innerHTML = editor.innerHTML + verseText;
+        // Append text with break for next typing
+        const newHtml = (currentMemo ? currentMemo + '<br>' : '') + verseHtml + '<p><br></p>';
+        
+        this.dom.noteMemo.innerHTML = newHtml;
 
         // Switch to note tab
         this.switchTab('tab-note');
 
         this.triggerAutoSave();
-        editor.scrollTop = editor.scrollHeight;
-        editor.focus();
+        
+        // Focus and scroll
+        setTimeout(() => {
+            this.dom.noteMemo.focus();
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(this.dom.noteMemo);
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            this.dom.noteMemo.scrollTop = this.dom.noteMemo.scrollHeight;
+        }, 100);
     }
 
-    // ─── Recording ───
+    // ─── Recording & TTS ───
 
     toggleRecording() {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -433,9 +536,7 @@ class NoteApp {
 
         if (this.isRecording) {
             this.recognition.stop();
-            this.isRecording = false;
-            this.dom.recordBtn.classList.remove('recording-active');
-            this.dom.recordBtn.innerHTML = '<ion-icon name="mic-outline"></ion-icon>';
+            this.stopRecordingUI();
         } else {
             if (!this.recognition) {
                 this.recognition = new SpeechRecognition();
@@ -451,7 +552,7 @@ class NoteApp {
                         }
                     }
                     if (finalTranscript) {
-                        const p = document.createElement('div');
+                        const p = document.createElement('p');
                         p.textContent = finalTranscript;
                         this.dom.noteMemo.appendChild(p);
                         this.dom.noteMemo.scrollTop = this.dom.noteMemo.scrollHeight;
@@ -459,9 +560,8 @@ class NoteApp {
                     }
                 };
 
-                this.recognition.onerror = () => {
-                    this.stopRecordingUI();
-                };
+                this.recognition.onerror = () => this.stopRecordingUI();
+                this.recognition.onend = () => this.stopRecordingUI();
             }
 
             this.recognition.start();
@@ -475,6 +575,41 @@ class NoteApp {
         this.isRecording = false;
         this.dom.recordBtn.classList.remove('recording-active');
         this.dom.recordBtn.innerHTML = '<ion-icon name="mic-outline"></ion-icon>';
+    }
+
+    toggleTTS() {
+        if (window.speechSynthesis.speaking) {
+            this.stopTTS();
+        } else {
+            const text = this.dom.noteMemo.innerText;
+            if (!text.trim()) {
+                alert('읽어드릴 텍스트가 없습니다.');
+                return;
+            }
+            this.speakText(text);
+        }
+    }
+
+    speakText(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ko-KR';
+        utterance.rate = 1.0;
+        
+        utterance.onstart = () => {
+            this.dom.ttsBtn.classList.add('active');
+            this.dom.ttsBtn.innerHTML = '<ion-icon name="pause-circle-outline"></ion-icon>';
+        };
+        
+        utterance.onend = () => this.stopTTS();
+        utterance.onerror = () => this.stopTTS();
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    stopTTS() {
+        window.speechSynthesis.cancel();
+        this.dom.ttsBtn.classList.remove('active');
+        this.dom.ttsBtn.innerHTML = '<ion-icon name="volume-high-outline"></ion-icon>';
     }
 
     // ─── Bookmark & Highlight ───
@@ -507,9 +642,9 @@ class NoteApp {
     // ─── AI Summary ───
 
     handleAISummary() {
-        const content = this.dom.noteMemo.innerText;
-        if (content.length < 10) {
-            alert('요약할 내용이 부족합니다. 좀 더 메모를 작성해주세요.');
+        const content = this.dom.noteMemo.innerText.trim();
+        if (content.length < 5) {
+            alert('요약할 내용이 부족합니다. 말씀을 체크하거나 메모를 작성해주세요.');
             return;
         }
 
@@ -522,30 +657,35 @@ class NoteApp {
             this.dom.aiModal.classList.add('active');
 
             this.dom.aiSummaryBtn.disabled = false;
-            this.dom.aiSummaryBtn.innerHTML = '<ion-icon name="sparkles-outline"></ion-icon><span>AI</span>';
-        }, 1500);
+            this.dom.aiSummaryBtn.innerHTML = '<ion-icon name="sparkles-outline"></ion-icon><span>AI 요약</span>';
+        }, 2000);
     }
 
     generateAISummary(text) {
-        const theme = this.dom.themeInput.value || '오늘의 말씀';
+        const theme = this.dom.themeInput.value || '하나님의 말씀';
         const lines = text.split('\n').filter(l => l.trim());
         const verses = lines.filter(l => l.startsWith('['));
-        const thoughts = lines.filter(l => !l.startsWith('['));
-
+        
         return `
-            <h4>📖 주제: ${theme}</h4>
-            <p><strong>[핵심 요약]</strong><br>본 설교/묵상은 <em>${theme}</em>에 관한 깊은 통찰을 다루고 있습니다.</p>
+            <div class="pastor-intro">
+                <p>📖 <strong>목회적 영적 통찰</strong></p>
+                <p style="font-size: 0.9em; color: #666;">건전한 복음주의 신학의 관점에서 본 성경 노트를 요약해 드립니다.</p>
+            </div>
             
-            <h4>📜 주요 말씀</h4>
+            <h4>🕊️ 오늘 선포된 진리: ${theme}</h4>
+            <p><strong>[신학적 핵심]</strong><br>본 본문은 <em>${theme}</em>의 핵심 가치를 복음의 정수로 조명하고 있습니다. 우리는 이 말씀을 통해 하나님의 주권과 우리를 향한 그분의 신실하신 사랑을 재확인해야 합니다.</p>
+            
+            <h4>📜 성경적 근거 (Key Verses)</h4>
             <ul>
-                ${verses.map(v => `<li>${v}</li>`).join('') || '<li>선택된 말씀이 없습니다.</li>'}
+                ${verses.map(v => `<li>${v}</li>`).join('') || '<li>선포된 말씀을 다시 묵상하십시오.</li>'}
             </ul>
 
-            <h4>💡 묵상 포인트</h4>
-            <p>${thoughts.slice(0, 3).join('<br>') || '작성된 메모가 없습니다.'}</p>
+            <h4>💡 영적 적용 및 포인트</h4>
+            <p>1. <strong>그리스도 중심적 삶</strong>: 기록된 내용은 우리 삶의 목적이 오직 그리스도께 있음을 가르칩니다.</p>
+            <p>2. <strong>성도의 거룩한 소명</strong>: 말씀을 통해 깨달은 은혜를 삶의 현장에서 드러내는 것이 우리의 증인된 삶입니다.</p>
             
-            <h4>🙏 실천 과제</h4>
-            <p>${theme}의 은혜를 기억하며 일주일간 실천할 구체적인 계획을 세워보세요.</p>
+            <h4>🙏 기도의 고백과 실천</h4>
+            <p>하나님, 오늘 ${theme}의 말씀을 통해 깨닫게 하시니 감사합니다. 이 진리가 제 심령 골수 속까지 스며들어, 세상 속에서도 그리스도의 향기를 풍기는 복음의 사람으로 살게 하소서. 아멘.</p>
         `;
     }
 
@@ -561,7 +701,7 @@ class NoteApp {
 ${this.dom.noteMemo.innerText}
 
 ---
-Generated by 하맘 성경노트 Pro
+Generated by 하맘 성경노트 PRO
         `.trim();
 
         this.copyToClipboard(fullContent, 'NotebookLM 연동용 내용이 복사되었습니다.');
@@ -569,11 +709,11 @@ Generated by 하맘 성경노트 Pro
 
     handleShare() {
         const theme = this.dom.themeInput.value || '성경노트';
-        const content = `[${theme}]\n\n${this.dom.noteMemo.innerText}\n\n— 하맘 성경노트 Pro`;
+        const content = `[${theme}]\n\n${this.dom.noteMemo.innerText}\n\n— 하맘 성경노트 PRO (하맘컨텐츠)`;
 
         if (navigator.share) {
             navigator.share({
-                title: '하맘 성경노트 Pro',
+                title: '하맘 성경노트 PRO',
                 text: content
             }).catch(console.error);
         } else {
@@ -602,6 +742,7 @@ Generated by 하맘 성경노트 Pro
                 <div>
                     <strong>${v.ref}</strong>
                     <p>${v.text}</p>
+                    ${v.nivText ? `<p style="font-size: 0.85em; color: #888; margin-top: 2px;">${v.nivText}</p>` : ''}
                 </div>
                 <button onclick="window.app.removeVerse('${v.ref}')">
                     <ion-icon name="close-circle"></ion-icon>
@@ -654,7 +795,8 @@ Generated by 하맘 성경노트 Pro
     }
 
     triggerAutoSave() {
-        this.dom.autoSaveIndicator.classList.add('active');
+        if (this.dom.autoSaveIndicator) 
+            this.dom.autoSaveIndicator.classList.add('active');
 
         clearTimeout(this.autoSaveTimer);
         this.autoSaveTimer = setTimeout(() => {
@@ -672,7 +814,8 @@ Generated by 하맘 성경노트 Pro
         this.notes[key] = { ...this.currentNote };
         localStorage.setItem('bible_notes', JSON.stringify(this.notes));
 
-        this.dom.autoSaveIndicator.classList.remove('active');
+        if (this.dom.autoSaveIndicator)
+            this.dom.autoSaveIndicator.classList.remove('active');
 
         this.renderCalendar();
         this.renderNotesSummary(this.currentNote.date);
@@ -751,7 +894,8 @@ Generated by 하맘 성경노트 Pro
         }
 
         const catLabels = { sermon: '설교', faith: '신앙', prayer: '기도' };
-        const memoPreview = note.memo.replace(/<[^>]*>/g, '').substring(0, 60);
+        const memoPlain = note.memo.replace(/<[^>]*>/g, '').trim();
+        const memoPreview = memoPlain.substring(0, 60);
 
         this.dom.notesOnDate.innerHTML = `
             <div class="note-summary-item ${note.category}" onclick="window.app.openNoteFromCalendar('${date}')">
