@@ -10,6 +10,7 @@
 let BIBLE_BOOKS = [];
 let ALL_VERSES = {};
 let ALL_VERSES_NIV = {};
+let ALL_VERSES_EASY = {};
 let IS_LOADING = true;
 
 // --- Note Engine ---
@@ -62,15 +63,17 @@ class NoteApp {
                 <p>성경 데이터를 불러오는 중...</p>
             </div>`;
 
-        const [booksRes, versesRes, nivRes] = await Promise.all([
+        const [booksRes, versesRes, nivRes, easyRes] = await Promise.all([
             fetch('bible_books.json'),
             fetch('bible_verses.json'),
-            fetch('bible_verses_niv.json')
+            fetch('bible_verses_niv.json'),
+            fetch('bible_verses_easy.json')
         ]);
 
         BIBLE_BOOKS = await booksRes.json();
         ALL_VERSES = await versesRes.json();
         ALL_VERSES_NIV = await nivRes.json();
+        ALL_VERSES_EASY = await easyRes.json();
         IS_LOADING = false;
 
         this.dom.bookSelect.innerHTML = '<option value="">성경 선택</option>';
@@ -333,20 +336,24 @@ class NoteApp {
                 if (count >= MAX_RESULTS) break;
                 const [bookName, chapter] = key.split('-');
                 const nivVerses = ALL_VERSES_NIV[key] || [];
+                const easyVerses = ALL_VERSES_EASY[key] || [];
 
                 verses.forEach((text, idx) => {
                     if (count >= MAX_RESULTS) return;
                     const nivText = nivVerses[idx] || '';
+                    const easyText = easyVerses[idx] || '';
                     const matchKr = text.includes(query);
                     const matchNiv = nivText.toLowerCase().includes(query.toLowerCase());
+                    const matchEasy = easyText.includes(query);
 
-                    if (matchKr || matchNiv) {
+                    if (matchKr || matchNiv || matchEasy) {
                         results.push({ 
                             book: bookName, 
                             chapter, 
                             verse: idx + 1, 
                             text, 
-                            nivText 
+                            nivText,
+                            easyText
                         });
                         count++;
                     }
@@ -372,6 +379,8 @@ class NoteApp {
                         displayContent = `<p class="verse-text">${res.text}</p>`;
                     } else if (this.currentTranslation === 'niv') {
                         displayContent = `<p class="verse-text niv">${res.nivText || 'N/A'}</p>`;
+                    } else if (this.currentTranslation === 'easy') {
+                        displayContent = `<p class="verse-text easy">${res.easyText || 'N/A'}</p>`;
                     } else {
                         displayContent = `
                             <p class="verse-text">${res.text}</p>
@@ -422,12 +431,15 @@ class NoteApp {
         this.dom.verseList.innerHTML = verses.map((text, idx) => {
             const isSelected = this.isVerseSelected(book, chap, idx + 1);
             const nivText = nivVerses[idx] || '';
+            const easyText = (ALL_VERSES_EASY[key] || [])[idx] || '';
             let displayContent = '';
 
             if (this.currentTranslation === 'kr') {
                 displayContent = `<p class="verse-text">${text}</p>`;
             } else if (this.currentTranslation === 'niv') {
                 displayContent = `<p class="verse-text niv">${nivText}</p>`;
+            } else if (this.currentTranslation === 'easy') {
+                displayContent = `<p class="verse-text easy">${easyText}</p>`;
             } else {
                 displayContent = `
                     <p class="verse-text">${text}</p>
