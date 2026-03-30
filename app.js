@@ -45,6 +45,7 @@ class NoteApp {
         this.initAccordion();
         this.initMenuSheet();
         this.initDragSelection();
+        this.initSwipeNavigation();
 
         this.renderHighlights();
         this.renderRecitations();
@@ -128,6 +129,7 @@ class NoteApp {
             verseList: document.getElementById('verse-list'),
             bibleFabContainer: document.getElementById('bible-fab-container'),
             pushToNoteBtn: document.getElementById('push-to-note-btn'),
+            bibleMemoBtn: document.getElementById('bible-memo-btn'),
             pushCount: document.getElementById('push-count'),
             bibleTTSBtn: document.getElementById('bible-tts-btn'),
             bibleShareBtn: document.getElementById('bible-share-btn'),
@@ -204,6 +206,7 @@ class NoteApp {
 
         this.dom.saveBtn.onclick = () => this.saveNote(true);
         this.dom.pushToNoteBtn.onclick = () => this.handlePushToNote();
+        if (this.dom.bibleMemoBtn) this.dom.bibleMemoBtn.onclick = () => this.handlePushToNote();
         
         this.dom.recordBtn.onclick = () => this.toggleRecording();
         this.dom.ttsBtn.onclick = () => this.toggleTTS();
@@ -223,6 +226,44 @@ class NoteApp {
         tabs.forEach(tab => {
             tab.onclick = () => this.switchTab(tab.dataset.tab);
         });
+    }
+
+    initSwipeNavigation() {
+        let touchstartX = 0;
+        let touchstartY = 0;
+
+        const mainArea = this.dom.contentArea;
+        
+        mainArea.addEventListener('touchstart', (e) => {
+            touchstartX = e.changedTouches[0].screenX;
+            touchstartY = e.changedTouches[0].screenY;
+        }, {passive: true});
+        
+        mainArea.addEventListener('touchend', (e) => {
+            const touchendX = e.changedTouches[0].screenX;
+            const touchendY = e.changedTouches[0].screenY;
+            
+            const diffX = touchstartX - touchendX;
+            const diffY = touchstartY - touchendY;
+            
+            // Allow swipe if X movement is significant and Y movement is small (not scrolling)
+            if (Math.abs(diffX) > 80 && Math.abs(diffY) < 100) {
+                if (diffX > 0) this.navigateTab(1); // Swipe Left -> Next Tab
+                else this.navigateTab(-1); // Swipe Right -> Prev Tab
+            }
+        }, {passive: true});
+    }
+
+    navigateTab(direction) {
+        const tabs = Array.from(this.dom.tabBar.querySelectorAll('.tab-item'));
+        const currentIndex = tabs.findIndex(t => t.classList.contains('active'));
+        if (currentIndex === -1) return;
+        let nextIndex = currentIndex + direction;
+        if (nextIndex < 0) nextIndex = 0;
+        if (nextIndex >= tabs.length) nextIndex = tabs.length - 1;
+        if (nextIndex !== currentIndex) {
+            this.switchTab(tabs[nextIndex].dataset.tab);
+        }
     }
 
     switchTab(tabId) {
@@ -551,16 +592,39 @@ class NoteApp {
 
         const currentMemo = this.dom.noteMemo.innerHTML.trim();
         const verseHtml = this.currentNote.verses.map(v => {
-            let content = `<strong>[${v.ref}]</strong> ${v.text}`;
-            if (v.nivText) {
-                content += `<br><span style="color: #666; font-size: 0.9em;">(NIV) ${v.nivText}</span>`;
-            }
-            return `<p>${content}</p>`;
+            let nivTag = v.nivText ? `<div style="color: #666; font-size: 0.9em; margin-top: 4px;">(NIV) ${v.nivText}</div>` : '';
+            return `
+            <div style="background-color: #f7f7f8; border-left: 4px solid #007aff; padding: 12px; border-radius: 8px; margin: 15px 0;">
+                <div style="font-weight: bold; color: #007aff; margin-bottom: 5px;">[${v.ref}]</div>
+                <div style="line-height: 1.5;">${v.text}</div>
+                ${nivTag}
+            </div>`;
         }).join('');
 
         this.dom.noteMemo.innerHTML = (currentMemo ? currentMemo + '<br>' : '') + verseHtml + '<p><br></p>';
         this.switchTab('tab-note');
+        
+        // Remove from selection to reset
+        this.currentNote.verses = [];
+        this.updatePushButton();
+        this.renderVerses();
+        
         this.triggerAutoSave();
+        
+        // Focus for immediate typing
+        setTimeout(() => {
+            if (this.dom.noteMemo) {
+                this.dom.noteMemo.focus();
+                try {
+                    const range = document.createRange();
+                    range.selectNodeContents(this.dom.noteMemo);
+                    range.collapse(false);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } catch(e) {}
+            }
+        }, 300);
     }
 
     toggleRecording() {
