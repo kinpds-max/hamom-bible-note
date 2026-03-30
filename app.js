@@ -109,12 +109,18 @@ class NoteApp {
             if (picker) picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
         };
         this.dom.bibleReciteBtn.onclick = () => this.markForRecitation();
-        
-        document.body.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(() => {});
+        const requestFS = () => {
+            if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().then(() => {
+                    if (screen.orientation && screen.orientation.lock) {
+                        try { screen.orientation.lock('portrait').catch(() => {}); } catch(e) {}
+                    }
+                }).catch(() => {});
             }
-        }, { once: true });
+        };
+
+        document.body.addEventListener('click', requestFS, { once: true });
+        document.body.addEventListener('touchstart', requestFS, { once: true });
     }
 
     initDOM() {
@@ -124,6 +130,7 @@ class NoteApp {
             preacherInput: document.getElementById('note-preacher'),
             categorySelect: document.getElementById('note-category'),
             autoSaveIndicator: document.getElementById('auto-save-indicator'),
+            exitFullscreenBtn: document.getElementById('exit-fullscreen-btn'),
 
             bibleSearch: document.getElementById('bible-search'),
             searchBtn: document.getElementById('search-btn'),
@@ -222,6 +229,20 @@ class NoteApp {
 
         if (this.dom.shareNoteBtn) this.dom.shareNoteBtn.onclick = () => { this.closeMenu(); this.handleShare(); };
         if (this.dom.exportNotebookBtn) this.dom.exportNotebookBtn.onclick = () => { this.closeMenu(); this.handleExportToLM(); };
+
+        if (this.dom.exitFullscreenBtn) {
+            this.dom.exitFullscreenBtn.onclick = () => {
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                }
+            };
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            if (this.dom.exitFullscreenBtn) {
+                this.dom.exitFullscreenBtn.style.display = document.fullscreenElement ? 'inline-flex' : 'none';
+            }
+        });
     }
 
     initTabBar() {
@@ -402,18 +423,57 @@ class NoteApp {
         if (query.length < 2) return;
 
         const results = [];
-        for (const key in ALL_VERSES) {
-            const verses = ALL_VERSES[key];
-            const nivVerses = ALL_VERSES_NIV[key] || [];
-            verses.forEach((v, idx) => {
-                if (v.includes(query) || (nivVerses[idx] && nivVerses[idx].toLowerCase().includes(query.toLowerCase()))) {
+        const mode = this.currentTranslation; // 'kr', 'easy', 'niv', 'both', 'story'
+        const togetherSettings = Array.from(document.querySelectorAll('#together-settings input:checked')).map(i => i.value);
+
+        if (mode === 'story') {
+            ALL_STORY_DATA.forEach((s, idx) => {
+                if (s.text.includes(query) || s.title.includes(query)) {
                     results.push({
-                        ref: key.replace('-', ' ') + ':' + (idx + 1),
-                        text: this.highlightQuery(v, query),
-                        niv: nivVerses[idx] ? this.highlightQuery(nivVerses[idx], query) : ''
+                        ref: s.title,
+                        text: this.highlightQuery(s.text, query)
                     });
                 }
             });
+        } else {
+            for (const key in ALL_VERSES) {
+                const krVerses = ALL_VERSES[key];
+                const nivVerses = ALL_VERSES_NIV[key] || [];
+                const easyVerses = ALL_VERSES_EASY[key] || [];
+
+                krVerses.forEach((v, idx) => {
+                    const kr = v;
+                    const niv = nivVerses[idx] || '';
+                    const easy = easyVerses[idx] || '';
+
+                    let match = false;
+                    if (mode === 'kr' && kr.includes(query)) match = true;
+                    else if (mode === 'niv' && niv.toLowerCase().includes(query.toLowerCase())) match = true;
+                    else if (mode === 'easy' && easy.includes(query)) match = true;
+                    else if (mode === 'both') {
+                        if (togetherSettings.includes('kr') && kr.includes(query)) match = true;
+                        if (togetherSettings.includes('niv') && niv.toLowerCase().includes(query.toLowerCase())) match = true;
+                        if (togetherSettings.includes('easy') && easy.includes(query)) match = true;
+                    }
+
+                    if (match) {
+                        let displayText = '';
+                        if (mode === 'kr') displayText = kr;
+                        else if (mode === 'niv') displayText = niv;
+                        else if (mode === 'easy') displayText = easy;
+                        else if (mode === 'both') {
+                            if (togetherSettings.includes('kr')) displayText += `<p>${kr}</p>`;
+                            if (togetherSettings.includes('easy')) displayText += `<p class="easy">${easy}</p>`;
+                            if (togetherSettings.includes('niv')) displayText += `<p class="niv">${niv}</p>`;
+                        }
+
+                        results.push({
+                            ref: key.replace('-', ' ') + ':' + (idx + 1),
+                            text: this.highlightQuery(displayText, query)
+                        });
+                    }
+                });
+            }
         }
         this.renderWordSearchResults(results);
     }
@@ -433,8 +493,7 @@ class NoteApp {
             <div class="verse-item">
                 <div class="verse-item-content">
                     <span class="verse-ref">${res.ref}</span>
-                    <p class="verse-text">${res.text}</p>
-                    ${res.niv ? `<p class="verse-text niv">${res.niv}</p>` : ''}
+                    <div class="verse-text">${res.text}</div>
                 </div>
             </div>
         `).join('');
@@ -610,14 +669,27 @@ class NoteApp {
 
     toggleVerseSelection(checkbox) {
         const ref = checkbox.dataset.ref;
-        const text = checkbox.dataset.text;
+        const krText = checkbox.dataset.text;
         const nivText = checkbox.dataset.niv;
+        const easyText = checkbox.dataset.easy;
         const parent = checkbox.closest('.verse-item');
 
+        let actualText = krText;
+        if (this.currentTranslation === 'easy') actualText = easyText || krText;
+        if (this.currentTranslation === 'niv') actualText = nivText || krText;
+        if (this.currentTranslation === 'both') {
+            const selectedVers = Array.from(document.querySelectorAll('#together-settings input:checked')).map(i => i.value);
+            actualText = '';
+            if (selectedVers.includes('kr') && krText) actualText += krText + '<br>';
+            if (selectedVers.includes('easy') && easyText) actualText += easyText + '<br>';
+            if (selectedVers.includes('niv') && nivText) actualText += nivText + '<br>';
+            actualText = actualText.trim() || krText;
+        }
+
         if (checkbox.checked) {
-            if (!this.currentNote.verses.find(v => v.ref === ref)) {
-                this.currentNote.verses.push({ ref, text, nivText });
-            }
+            // Remove existing to replace with new text
+            this.currentNote.verses = this.currentNote.verses.filter(v => v.ref !== ref);
+            this.currentNote.verses.push({ ref, text: actualText, nivText: '' });
             if (parent) parent.classList.add('selected');
         } else {
             this.currentNote.verses = this.currentNote.verses.filter(v => v.ref !== ref);
@@ -647,12 +719,10 @@ class NoteApp {
 
         const currentMemo = this.dom.noteMemo.innerHTML.trim();
         const verseHtml = this.currentNote.verses.map(v => {
-            let nivTag = v.nivText ? `<div style="color: #666; font-size: 0.9em; margin-top: 4px;">(NIV) ${v.nivText}</div>` : '';
             return `
             <div style="background-color: #f7f7f8; border-left: 4px solid #007aff; padding: 12px; border-radius: 8px; margin: 15px 0;">
                 <div style="font-weight: bold; color: #007aff; margin-bottom: 5px;">[${v.ref}]</div>
                 <div style="line-height: 1.5;">${v.text}</div>
-                ${nivTag}
             </div>`;
         }).join('');
 
@@ -787,7 +857,7 @@ class NoteApp {
     async generateAISummary(text) {
         const apiKey = localStorage.getItem('gemini_api_key');
         if (!apiKey) {
-            const key = prompt('Gemini API 키를 입력해주세요 (무료 키 발급 필요, 기기에 저장됩니다):');
+            const key = prompt('Gemini API 키를 입력해주세요 (Google AI Studio에서 발급 가능):');
             if (key) {
                 localStorage.setItem('gemini_api_key', key);
                 return this.generateAISummary(text);
@@ -798,7 +868,7 @@ class NoteApp {
         const promptText = `다음 신앙 노트(설교 혹은 묵상)를 바탕으로, 건강한 복음주의 목회자 및 신학자의 관점에서 아래 구조에 맞춰 자세하게 정리해주세요:\n\n1. 핵심 요약 (짧게)\n2. 성경 본문의 문맥과 신학적 의미 (풍성하게)\n3. 오늘날의 실천적 적용 (구체적으로)\n4. 마무리 기도\n\n내용:\n${text}`;
         
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })

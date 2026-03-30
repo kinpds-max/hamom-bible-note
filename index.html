@@ -40,6 +40,9 @@
             </div>
             <div class="top-bar-right">
                 <div id="auto-save-indicator" class="save-dot"></div>
+                <button id="exit-fullscreen-btn" class="icon-btn" style="display: none; font-size: 1.5rem; margin-left: 10px;" aria-label="전체화면 닫기" title="전체화면 닫기">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
             </div>
         </header>
 
@@ -273,11 +276,6 @@
                 <ion-icon name="create" class="tab-icon-active"></ion-icon>
                 <span>노트</span>
             </button>
-            <button class="tab-item" data-tab="tab-calendar">
-                <ion-icon name="calendar-outline" class="tab-icon"></ion-icon>
-                <ion-icon name="calendar" class="tab-icon-active"></ion-icon>
-                <span>달력</span>
-            </button>
             <button class="tab-item" data-tab="tab-highlight">
                 <ion-icon name="color-palette-outline" class="tab-icon"></ion-icon>
                 <ion-icon name="color-palette" class="tab-icon-active"></ion-icon>
@@ -287,6 +285,11 @@
                 <ion-icon name="journal-outline" class="tab-icon"></ion-icon>
                 <ion-icon name="journal" class="tab-icon-active"></ion-icon>
                 <span>암송</span>
+            </button>
+            <button class="tab-item" data-tab="tab-calendar">
+                <ion-icon name="calendar-outline" class="tab-icon"></ion-icon>
+                <ion-icon name="calendar" class="tab-icon-active"></ion-icon>
+                <span>달력</span>
             </button>
         </nav>
 
