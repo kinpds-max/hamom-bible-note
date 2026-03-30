@@ -31,7 +31,7 @@
                     <ion-icon name="ellipsis-horizontal"></ion-icon>
                 </button>
             </div>
-            <div class="top-bar-center">
+            <div class="top-bar-center" style="cursor: pointer;" onclick="window.app && window.app.switchTab('tab-bible')">
                 <h1 class="app-title">
                     <span class="title-icon">✦</span>
                     하맘 성경노트
@@ -224,6 +224,32 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Tab: Highlights -->
+            <section id="tab-highlight" class="tab-panel">
+                <div class="history-section">
+                    <h3 class="section-title">형광펜 모음</h3>
+                    <div id="highlight-list" class="notes-list">
+                        <div class="empty-state small">
+                            <ion-icon name="color-palette-outline"></ion-icon>
+                            <p>형광펜으로 표시한 구절이 없습니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Memory Verses -->
+            <section id="tab-memory" class="tab-panel">
+                <div class="history-section">
+                    <h3 class="section-title">암송 구절</h3>
+                    <div id="memory-list" class="notes-list">
+                        <div class="empty-state small">
+                            <ion-icon name="journal-outline"></ion-icon>
+                            <p>암송 구절로 등록된 말씀이 없습니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
 
         <!-- ===== Bottom Tab Bar (Apple-style) ===== -->
@@ -242,6 +268,16 @@
                 <ion-icon name="calendar-outline" class="tab-icon"></ion-icon>
                 <ion-icon name="calendar" class="tab-icon-active"></ion-icon>
                 <span>달력</span>
+            </button>
+            <button class="tab-item" data-tab="tab-highlight">
+                <ion-icon name="color-palette-outline" class="tab-icon"></ion-icon>
+                <ion-icon name="color-palette" class="tab-icon-active"></ion-icon>
+                <span>형광펜</span>
+            </button>
+            <button class="tab-item" data-tab="tab-memory">
+                <ion-icon name="journal-outline" class="tab-icon"></ion-icon>
+                <ion-icon name="journal" class="tab-icon-active"></ion-icon>
+                <span>암송</span>
             </button>
         </nav>
 

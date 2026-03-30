@@ -32,6 +32,8 @@ class NoteApp {
         this.activeTab = 'tab-bible';
         this.versesAccordionOpen = true;
         this.currentTranslation = 'kr';
+        this.highlights = JSON.parse(localStorage.getItem('bible_highlights') || '[]');
+        this.recitations = JSON.parse(localStorage.getItem('bible_recitings') || '[]');
 
         this.init();
     }
@@ -42,6 +44,10 @@ class NoteApp {
         this.initTabBar();
         this.initAccordion();
         this.initMenuSheet();
+        this.initDragSelection();
+
+        this.renderHighlights();
+        this.renderRecitations();
 
         try {
             await this.loadBibleData();
@@ -241,6 +247,55 @@ class NoteApp {
         this.dom.menuOverlay.onclick = (e) => { if (e.target === this.dom.menuOverlay) this.closeMenu(); };
     }
 
+    initDragSelection() {
+        let isDragging = false;
+        let dragMode = null;
+
+        const container = this.dom.verseList;
+
+        const onMove = (target) => {
+            if (!isDragging) return;
+            const verseItem = target?.closest('.verse-item');
+            if (verseItem) {
+                const cb = verseItem.querySelector('.verse-item-check');
+                if (cb && cb.checked !== dragMode) {
+                    cb.checked = dragMode;
+                    this.toggleVerseSelection(cb);
+                }
+            }
+        };
+
+        container.addEventListener('mousedown', (e) => {
+            const verseItem = e.target.closest('.verse-item');
+            if (verseItem) {
+                isDragging = true;
+                const cb = verseItem.querySelector('.verse-item-check');
+                dragMode = !cb.checked;
+            }
+        }, { passive: true });
+
+        container.addEventListener('mouseover', (e) => onMove(e.target));
+        document.addEventListener('mouseup', () => { isDragging = false; });
+
+        container.addEventListener('touchstart', (e) => {
+            const verseItem = e.target.closest('.verse-item');
+            if (verseItem) {
+                isDragging = true;
+                const cb = verseItem.querySelector('.verse-item-check');
+                dragMode = !cb.checked;
+            }
+        }, { passive: true });
+
+        container.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            onMove(el);
+        }, { passive: true });
+
+        document.addEventListener('touchend', () => { isDragging = false; });
+    }
+
     openMenu() { this.dom.menuOverlay.classList.add('active'); }
     closeMenu() { this.dom.menuOverlay.classList.remove('active'); }
 
@@ -428,11 +483,33 @@ class NoteApp {
     }
 
     highlightSelectedVerses() {
-        alert('선택한 구절에 하이라이트가 적용되었습니다.');
+        if (!this.currentNote.verses.length) return;
+        this.currentNote.verses.forEach(v => {
+            if (!this.highlights.some(h => h.ref === v.ref)) {
+                this.highlights.push(v);
+            }
+        });
+        localStorage.setItem('bible_highlights', JSON.stringify(this.highlights));
+        this.renderHighlights();
+        alert('선택한 구절에 형광펜이 적용되었습니다.');
+        this.currentNote.verses = [];
+        this.updatePushButton();
+        this.renderVerses();
     }
 
     markForRecitation() {
+        if (!this.currentNote.verses.length) return;
+        this.currentNote.verses.forEach(v => {
+            if (!this.recitations.some(r => r.ref === v.ref)) {
+                this.recitations.push(v);
+            }
+        });
+        localStorage.setItem('bible_recitings', JSON.stringify(this.recitations));
+        this.renderRecitations();
         alert('암송 구절로 등록되었습니다.');
+        this.currentNote.verses = [];
+        this.updatePushButton();
+        this.renderVerses();
     }
 
     toggleVerseSelection(checkbox) {
@@ -537,7 +614,7 @@ class NoteApp {
         if (window.speechSynthesis.speaking) {
             this.stopTTS();
         } else {
-            const text = this.dom.noteMemo.innerText;
+            const text = this.dom.noteMemo.textContent;
             if (!text.trim()) {
                 alert('읽어드릴 텍스트가 없습니다.');
                 return;
@@ -553,10 +630,13 @@ class NoteApp {
     }
 
     applyBookmarkUI() {
+        const icon = this.dom.bookmarkBtn.querySelector('ion-icon');
         if (this.currentNote.isBookmarked) {
             this.dom.bookmarkBtn.classList.add('active');
+            if (icon) icon.setAttribute('name', 'bookmark');
         } else {
             this.dom.bookmarkBtn.classList.remove('active');
+            if (icon) icon.setAttribute('name', 'bookmark-outline');
         }
     }
 
@@ -566,22 +646,58 @@ class NoteApp {
     }
 
     handleAISummary() {
-        const content = this.dom.noteMemo.innerText.trim();
+        const content = this.dom.noteMemo.textContent.trim();
         if (content.length < 5) {
             alert('요약할 내용이 부족합니다.');
             return;
         }
+        
         this.dom.aiSummaryBtn.disabled = true;
-        setTimeout(() => {
-            this.dom.summaryResult.innerHTML = this.generateAISummary(content);
-            this.dom.aiModal.classList.add('active');
+        this.dom.summaryResult.innerHTML = '<div class="empty-state"><ion-icon name="sync-outline" class="spin"></ion-icon><p>AI가 기도하는 마음으로 약을 작성 중입니다...</p></div>';
+        this.dom.aiModal.classList.add('active');
+
+        this.generateAISummary(content).then(res => {
+            this.dom.summaryResult.innerHTML = `<div style="line-height:1.6; font-size:0.95rem;">${res}</div>`;
             this.dom.aiSummaryBtn.disabled = false;
-        }, 2000);
+        }).catch(err => {
+            this.dom.summaryResult.innerHTML = `<p style="color:red; padding:20px;">오류 발생: ${err.message}</p>`;
+            this.dom.aiSummaryBtn.disabled = false;
+        });
     }
 
-    generateAISummary(text) {
-        const theme = this.dom.themeInput.value || '하나님의 말씀';
-        return `<h4>🕊️ 오늘 선포된 진리: ${theme}</h4><p>AI 요약 기능이 활성화되었습니다.</p>`;
+    async generateAISummary(text) {
+        const apiKey = localStorage.getItem('gemini_api_key');
+        if (!apiKey) {
+            const key = prompt('Gemini API 키를 입력해주세요 (무료 키 발급 필요, 기기에 저장됩니다):');
+            if (key) {
+                localStorage.setItem('gemini_api_key', key);
+                return this.generateAISummary(text);
+            }
+            return '<p>API 키가 입력되지 않았습니다.</p>';
+        }
+
+        const promptText = `다음 신앙 노트(설교 혹은 묵상)를 바탕으로, 건강한 복음주의 목회자 및 신학자의 관점에서 아래 구조에 맞춰 자세하게 정리해주세요:\n\n1. 핵심 요약 (짧게)\n2. 성경 본문의 문맥과 신학적 의미 (풍성하게)\n3. 오늘날의 실천적 적용 (구체적으로)\n4. 마무리 기도\n\n내용:\n${text}`;
+        
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+
+            let resultText = data.candidates[0].content.parts[0].text;
+            resultText = resultText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            resultText = resultText.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            return resultText.replace(/\n/g, '<br>');
+        } catch (e) {
+            if (e.message.includes('API_KEY_INVALID') || e.message.includes('key not valid')) {
+                localStorage.removeItem('gemini_api_key');
+            }
+            throw e;
+        }
     }
 
     handleExportToLM() {
@@ -621,6 +737,50 @@ class NoteApp {
         this.updatePushButton();
         this.renderVerses();
         this.triggerAutoSave();
+    }
+
+    renderHighlights() {
+        const container = document.getElementById('highlight-list');
+        if (!container) return;
+        if (this.highlights.length === 0) {
+            container.innerHTML = `<div class="empty-state small"><ion-icon name="color-palette-outline"></ion-icon><p>형광펜으로 표시한 구절이 없습니다.</p></div>`;
+            return;
+        }
+        container.innerHTML = this.highlights.map(v => `
+            <div class="note-summary-item faith" style="border-left-color: #ffd700;">
+                <h4>✨ ${v.ref}</h4>
+                <p>${v.text}</p>
+                <button onclick="window.app.removeHighlight('${v.ref}')" style="margin-top: 10px; background:none; border:none; color: #ff3b30; font-size: 0.9em; padding: 0; cursor:pointer;">삭제</button>
+            </div>
+        `).join('');
+    }
+
+    removeHighlight(ref) {
+        this.highlights = this.highlights.filter(h => h.ref !== ref);
+        localStorage.setItem('bible_highlights', JSON.stringify(this.highlights));
+        this.renderHighlights();
+    }
+
+    renderRecitations() {
+        const container = document.getElementById('memory-list');
+        if (!container) return;
+        if (this.recitations.length === 0) {
+            container.innerHTML = `<div class="empty-state small"><ion-icon name="journal-outline"></ion-icon><p>암송 구절로 등록된 말씀이 없습니다.</p></div>`;
+            return;
+        }
+        container.innerHTML = this.recitations.map(v => `
+            <div class="note-summary-item prayer" style="border-left-color: #34c759;">
+                <h4>📖 ${v.ref}</h4>
+                <p>${v.text}</p>
+                <button onclick="window.app.removeRecitation('${v.ref}')" style="margin-top: 10px; background:none; border:none; color: #ff3b30; font-size: 0.9em; padding: 0; cursor:pointer;">삭제</button>
+            </div>
+        `).join('');
+    }
+
+    removeRecitation(ref) {
+        this.recitations = this.recitations.filter(r => r.ref !== ref);
+        localStorage.setItem('bible_recitings', JSON.stringify(this.recitations));
+        this.renderRecitations();
     }
 
     loadNoteByDate(date) {
