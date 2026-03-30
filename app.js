@@ -168,12 +168,28 @@ class NoteApp {
         this.dom.translationRadios.forEach(radio => {
             radio.onchange = () => {
                 this.currentTranslation = radio.value;
+                
+                // Toggle Together Settings Panel
+                const togetherPanel = document.getElementById('together-settings');
+                if (togetherPanel) {
+                    togetherPanel.style.display = this.currentTranslation === 'both' ? 'flex' : 'none';
+                }
+
+                if (this.dom.bookSelect.value) {
+                    this.handleBookChange(); // Refill chapter/story list
+                }
+                
                 if (this.dom.chapterSelect.value) {
                     this.renderVerses();
                 } else if (this.dom.bibleSearch.value) {
                     this.handleSearch();
                 }
             };
+        });
+
+        // Together View Checkboxes
+        document.querySelectorAll('#together-settings input[type="checkbox"]').forEach(ck => {
+            ck.onchange = () => this.renderVerses();
         });
 
         // Note Metadata
@@ -283,13 +299,25 @@ class NoteApp {
     handleBookChange() {
         const bookName = this.dom.bookSelect.value;
         const book = BIBLE_BOOKS.find(b => b.name === bookName);
-        this.dom.chapterSelect.innerHTML = '<option value="">장</option>';
-        if (book) {
-            for (let i = 1; i <= book.chapters; i++) {
+        
+        if (this.currentTranslation === 'story') {
+            this.dom.chapterSelect.innerHTML = '<option value="">이야기 선택</option>';
+            const stories = ALL_STORY_DATA.filter(s => s.book === bookName);
+            stories.forEach((s, idx) => {
                 const opt = document.createElement('option');
-                opt.value = i;
-                opt.textContent = i + '장';
+                opt.value = idx; // Store index for story array
+                opt.textContent = `<${s.title}>`;
                 this.dom.chapterSelect.appendChild(opt);
+            });
+        } else {
+            this.dom.chapterSelect.innerHTML = '<option value="">장</option>';
+            if (book) {
+                for (let i = 1; i <= book.chapters; i++) {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = i + '장';
+                    this.dom.chapterSelect.appendChild(opt);
+                }
             }
         }
     }
@@ -417,10 +445,27 @@ class NoteApp {
 
     renderVerses() {
         const book = this.dom.bookSelect.value;
-        const chap = this.dom.chapterSelect.value;
-        const key = `${book}-${chap}`;
+        const chapVal = this.dom.chapterSelect.value;
+        const key = `${book}-${chapVal}`;
+        
+        if (this.currentTranslation === 'story') {
+            const stories = ALL_STORY_DATA.filter(s => s.book === book);
+            const story = stories[chapVal];
+            if (story) {
+                this.dom.verseList.innerHTML = `
+                    <div class="search-info">📖 이야기: ${book} / ${story.title}</div>
+                    <div class="story-card expanded">
+                        <div class="story-body" style="max-height: none; opacity: 1; padding: 20px;">
+                            <p class="story-text" style="font-size: 1.1rem;">${story.text}</p>
+                        </div>
+                    </div>`;
+            }
+            return;
+        }
+
         const verses = ALL_VERSES[key];
         const nivVerses = ALL_VERSES_NIV[key] || [];
+        const easyVerses = ALL_VERSES_EASY[key] || [];
 
         if (!verses) {
             this.dom.verseList.innerHTML = `
@@ -432,10 +477,12 @@ class NoteApp {
         }
 
         this.dom.verseList.innerHTML = verses.map((text, idx) => {
-            const isSelected = this.isVerseSelected(book, chap, idx + 1);
+            const isSelected = this.isVerseSelected(book, chapVal, idx + 1);
             const nivText = nivVerses[idx] || '';
-            const easyText = (ALL_VERSES_EASY[key] || [])[idx] || '';
+            const easyText = easyVerses[idx] || '';
             let displayContent = '';
+
+            const selectedVers = Array.from(document.querySelectorAll('#together-settings input:checked')).map(i => i.value);
 
             if (this.currentTranslation === 'kr') {
                 displayContent = `<p class="verse-text">${text}</p>`;
@@ -443,16 +490,11 @@ class NoteApp {
                 displayContent = `<p class="verse-text niv">${nivText}</p>`;
             } else if (this.currentTranslation === 'easy') {
                 displayContent = `<p class="verse-text easy">${easyText}</p>`;
-            } else if (this.currentTranslation === 'story') {
-                // If story mode, we show stories related to this chapter if possible
-                // For now, let's just show a hint or a list of stories from the book
-                this.renderStoryList(book);
-                return;
-            } else {
-                displayContent = `
-                    <p class="verse-text">${text}</p>
-                    <p class="verse-text niv">${nivText}</p>
-                `;
+            } else if (this.currentTranslation === 'both') {
+                displayContent = '';
+                if (selectedVers.includes('kr')) displayContent += `<p class="verse-text">${text}</p>`;
+                if (selectedVers.includes('easy')) displayContent += `<p class="verse-text easy">${easyText}</p>`;
+                if (selectedVers.includes('niv')) displayContent += `<p class="verse-text niv">${nivText}</p>`;
             }
 
             return `
@@ -460,15 +502,15 @@ class NoteApp {
                 <input type="checkbox" class="verse-item-check"
                        data-text="${this.escapeHtml(text)}"
                        data-niv="${this.escapeHtml(nivText)}"
-                       data-ref="${book} ${chap}:${idx + 1}"
+                       data-easy="${this.escapeHtml(easyText)}"
+                       data-ref="${book} ${chapVal}:${idx + 1}"
                        ${isSelected ? 'checked' : ''}
                        onchange="window.app.toggleVerseSelection(this)">
                 <div class="verse-item-content">
-                    <span class="verse-ref">${book} ${chap}:${idx + 1}</span>
+                    <span class="verse-ref">${book} / ${chapVal}:${idx + 1}</span>
                     ${displayContent}
                 </div>
-            </label>
-        `;
+            </label>`;
         }).join('');
     }
 
@@ -482,12 +524,8 @@ class NoteApp {
             return;
         }
 
-        // Filter stories by current book (simple keyword matching for now)
-        // Since we don't have metadata, let's just show relevant ones or allow search
-        const stories = ALL_STORY_DATA.filter(s => s.text.includes(bookName) || s.title.includes(bookName));
-        
+        const stories = ALL_STORY_DATA.filter(s => s.book === bookName);
         if (stories.length === 0) {
-            // If no match, show all stories (searchable)
             this.renderAllStories();
             return;
         }

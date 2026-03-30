@@ -1543,3 +1543,52 @@ body {
   white-space: pre-wrap;
   word-break: keep-all;
 }
+/* ============================
+   TOGETHER MODE — Settings
+   ============================ */
+.together-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--bg-grouped);
+  border-radius: var(--radius-md);
+  margin-top: 8px;
+  animation: fadeIn var(--duration-fast);
+}
+
+.option-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.option-chips {
+  display: flex;
+  gap: 8px;
+}
+
+.option-chips label {
+  font-size: 13px;
+  background: var(--bg-elevated);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--separator-opaque);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.option-chips input:checked + span,
+.option-chips label:has(input:checked) {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: rgba(0, 122, 255, 0.05);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

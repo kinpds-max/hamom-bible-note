@@ -83,6 +83,10 @@
                     <!-- Version Selector -->
                     <div class="version-selector">
                         <label class="version-chip">
+                            <input type="radio" name="translation" value="story">
+                            <span>이야기</span>
+                        </label>
+                        <label class="version-chip">
                             <input type="radio" name="translation" value="kr" checked>
                             <span>개역개정</span>
                         </label>
@@ -98,10 +102,16 @@
                             <input type="radio" name="translation" value="both">
                             <span>같이보기</span>
                         </label>
-                        <label class="version-chip">
-                            <input type="radio" name="translation" value="story">
-                            <span>이야기</span>
-                        </label>
+                    </div>
+
+                    <!-- Together View Settings (Hidden by default) -->
+                    <div id="together-settings" class="together-options" style="display: none;">
+                        <span class="option-label">비교대상:</span>
+                        <div class="option-chips">
+                            <label><input type="checkbox" value="kr" checked> KR</label>
+                            <label><input type="checkbox" value="easy" checked> Easy</label>
+                            <label><input type="checkbox" value="niv"> NIV</label>
+                        </div>
                     </div>
                 </div>
 
