@@ -34,6 +34,7 @@ class NoteApp {
         this.currentTranslation = 'kr';
         this.highlights = JSON.parse(localStorage.getItem('bible_highlights') || '[]');
         this.recitations = JSON.parse(localStorage.getItem('bible_recitings') || '[]');
+        this.englishWords = JSON.parse(localStorage.getItem('bible_english_words') || '[]');
 
         this.init();
     }
@@ -54,6 +55,10 @@ class NoteApp {
             await this.loadBibleData();
             this.renderCalendar();
             this.loadNoteByDate(this.currentNote.date);
+            this.renderWordStudyList();
+            
+            const savedFs = localStorage.getItem('bible_font_size') || 'default';
+            this.setFontSize(savedFs);
         } catch (error) {
             console.error('Failed to load bible data:', error);
             this.dom.verseList.innerHTML = `
@@ -175,7 +180,14 @@ class NoteApp {
             tabBar: document.getElementById('tab-bar'),
             contentArea: document.getElementById('content-area'),
 
-            translationRadios: document.getElementsByName('translation')
+            translationRadios: document.getElementsByName('translation'),
+            wordStudyToggle: document.getElementById('word-study-toggle'),
+            wordStudyList: document.getElementById('word-study-list'),
+            wordInfoContent: document.getElementById('word-info-content'),
+            detailWordTitle: document.getElementById('detail-word-title'),
+            addToMemoBtn: document.getElementById('add-to-memo-btn'),
+            wordCountBadge: document.getElementById('word-count-badge'),
+            bibleEngBtn: document.getElementById('bible-eng-btn')
         };
 
         this.dom.dateInput.value = this.currentNote.date;
@@ -189,13 +201,20 @@ class NoteApp {
 
         this.dom.translationRadios.forEach(radio => {
             radio.onchange = () => {
+                const prevTranslation = this.currentTranslation;
                 this.currentTranslation = radio.value;
                 const togetherPanel = document.getElementById('together-settings');
                 if (togetherPanel) {
                     togetherPanel.style.display = this.currentTranslation === 'both' ? 'flex' : 'none';
                 }
+                
+                // When switching to Story mode, clear chapter selection to show list
+                if (this.currentTranslation === 'story') {
+                    this.dom.chapterSelect.value = '';
+                }
+
                 if (this.dom.bookSelect.value) this.handleBookChange();
-                if (this.dom.chapterSelect.value) this.renderVerses();
+                if (this.dom.chapterSelect.value || this.currentTranslation === 'story') this.renderVerses();
                 else if (this.dom.bibleSearch.value) this.handleSearch();
             };
         });
@@ -219,7 +238,7 @@ class NoteApp {
         if (this.dom.bibleMemoBtn) this.dom.bibleMemoBtn.onclick = () => this.handlePushToNote();
         
         this.dom.recordBtn.onclick = () => this.toggleRecording();
-        this.dom.ttsBtn.onclick = () => this.toggleTTS();
+        this.dom.ttsBtn.onclick = () => this.speakNoteTTS();
         this.dom.bookmarkBtn.onclick = () => this.toggleBookmark();
         this.dom.highlightBtn.onclick = () => this.applyHighlight();
         this.dom.aiSummaryBtn.onclick = () => this.handleAISummary();
@@ -229,6 +248,79 @@ class NoteApp {
 
         if (this.dom.shareNoteBtn) this.dom.shareNoteBtn.onclick = () => { this.closeMenu(); this.handleShare(); };
         if (this.dom.exportNotebookBtn) this.dom.exportNotebookBtn.onclick = () => { this.closeMenu(); this.handleExportToLM(); };
+
+        // Word Study Events
+        if (this.dom.wordStudyToggle) {
+            this.dom.wordStudyToggle.onclick = () => {
+                this.dom.wordStudyList.classList.toggle('active');
+                this.dom.wordStudyToggle.classList.toggle('open');
+            };
+        }
+
+        if (this.dom.addToMemoBtn) {
+            this.dom.addToMemoBtn.onclick = () => {
+                const word = this.dom.detailWordTitle.textContent;
+                this.addWordToStudy(word);
+            };
+        }
+
+        if (this.dom.bibleEngBtn) {
+            this.dom.bibleEngBtn.onclick = () => {
+                this.switchTab('tab-note');
+                if (this.dom.wordStudyList && !this.dom.wordStudyList.classList.contains('active')) {
+                    this.dom.wordStudyToggle.click();
+                }
+                setTimeout(() => {
+                    if (this.dom.wordStudyToggle) this.dom.wordStudyToggle.scrollIntoView({ behavior: 'smooth' });
+                }, 300);
+            };
+        }
+
+        // Gemini API Setup
+        const apiSetupBtn = document.getElementById('api-setup-btn');
+        if (apiSetupBtn) {
+            apiSetupBtn.onclick = () => document.getElementById('api-setup-panel').classList.toggle('hidden');
+        }
+        const saveKeyBtn = document.getElementById('save-key-btn');
+        if (saveKeyBtn) {
+            saveKeyBtn.onclick = () => {
+                const key = document.getElementById('gemini-key-input').value.trim();
+                if (key) {
+                    localStorage.setItem('gemini_api_key', key);
+                    alert('API 키가 저장되었습니다.');
+                    document.getElementById('api-setup-panel').classList.add('hidden');
+                }
+            };
+        }
+        const savedKey = localStorage.getItem('gemini_api_key');
+        if (savedKey) {
+            const keyInput = document.getElementById('gemini-key-input');
+            if (keyInput) keyInput.value = savedKey;
+        }
+
+        // TTS Player Controls
+        const playBtn = document.getElementById('tts-play-btn');
+        if (playBtn) {
+            playBtn.onclick = () => {
+                const icon = playBtn.querySelector('ion-icon');
+                if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                    window.speechSynthesis.pause();
+                    if (icon) icon.name = 'play';
+                } else if (window.speechSynthesis.paused) {
+                    window.speechSynthesis.resume();
+                    if (icon) icon.name = 'pause';
+                } else {
+                    this.playCurrentTTS();
+                }
+            };
+        }
+        document.getElementById('tts-stop-btn').onclick = () => this.stopTTS();
+        document.getElementById('tts-next-btn').onclick = () => this.nextTTS();
+        document.getElementById('tts-prev-btn').onclick = () => this.prevTTS();
+        document.getElementById('close-tts-modal').onclick = () => {
+            this.stopTTS();
+            document.getElementById('tts-player-modal').classList.remove('active');
+        };
 
         if (this.dom.exitFullscreenBtn) {
             this.dom.exitFullscreenBtn.onclick = () => {
@@ -529,7 +621,28 @@ class NoteApp {
         const key = `${book}-${chapVal}`;
         
         if (this.currentTranslation === 'story') {
+            if (!book) {
+                this.dom.verseList.innerHTML = `<div class="empty-state"><ion-icon name="book-outline" class="empty-icon"></ion-icon><p>가이드 성경책을 선택하세요</p></div>`;
+                return;
+            }
+            
             const stories = ALL_STORY_DATA.filter(s => s.book === book);
+            
+            if (!chapVal || chapVal === "") {
+                const storyHtml = stories.map((s, idx) => `
+                    <div class="story-choice-card" onclick="window.app.selectStory('${idx}')">
+                        <div class="story-choice-num">${idx + 1}</div>
+                        <div class="story-choice-title">${s.title}</div>
+                    </div>
+                `).join('');
+                this.dom.verseList.innerHTML = `
+                    <div class="search-info">📖 ${book} 이야기 목록</div>
+                    <div class="story-menu-grid">
+                        ${storyHtml}
+                    </div>`;
+                return;
+            }
+
             const story = stories[chapVal];
             if (story) {
                 const ref = `${book} 이야기:${parseInt(chapVal)+1}`;
@@ -552,7 +665,11 @@ class NoteApp {
                                 <p class="story-text" style="font-size: 1.1rem; line-height: 1.6;">${text}</p>
                             </div>
                         </div>
-                    </label>`;
+                    </label>
+                    <div class="story-nav-row">
+                        <button onclick="window.app.toPrevChapter()" class="nav-chapter-btn"><ion-icon name="chevron-back"></ion-icon> 이전 이야기</button>
+                        <button onclick="window.app.toNextChapter()" class="nav-chapter-btn">다음 이야기 <ion-icon name="chevron-forward"></ion-icon></button>
+                    </div>`;
             }
             return;
         }
@@ -581,14 +698,14 @@ class NoteApp {
             if (this.currentTranslation === 'kr') {
                 displayContent = `<p class="verse-text">${text}</p>`;
             } else if (this.currentTranslation === 'niv') {
-                displayContent = `<p class="verse-text niv">${nivText}</p>`;
+                displayContent = `<p class="verse-text niv">${this.splitNivWords(nivText)}</p>`;
             } else if (this.currentTranslation === 'easy') {
                 displayContent = `<p class="verse-text easy">${easyText}</p>`;
             } else if (this.currentTranslation === 'both') {
                 displayContent = '';
                 if (selectedVers.includes('kr')) displayContent += `<p class="verse-text">${text}</p>`;
                 if (selectedVers.includes('easy')) displayContent += `<p class="verse-text easy">${easyText}</p>`;
-                if (selectedVers.includes('niv')) displayContent += `<p class="verse-text niv">${nivText}</p>`;
+                if (selectedVers.includes('niv')) displayContent += `<p class="verse-text niv">${this.splitNivWords(nivText)}</p>`;
             }
 
             return `
@@ -606,6 +723,12 @@ class NoteApp {
                 </div>
             </label>`;
         }).join('');
+
+        this.dom.verseList.innerHTML += `
+            <div class="chapter-nav-row">
+                <button onclick="window.app.toPrevChapter()" class="nav-chapter-btn"><ion-icon name="chevron-back"></ion-icon> 이전 장</button>
+                <button onclick="window.app.toNextChapter()" class="nav-chapter-btn">다음 장 <ion-icon name="chevron-forward"></ion-icon></button>
+            </div>`;
     }
 
     isVerseSelected(book, chap, num) {
@@ -613,46 +736,151 @@ class NoteApp {
     }
 
     speakSelectedVerses() {
-        if (!this.currentNote.verses.length) return;
-        const text = this.currentNote.verses.map(v => `${v.ref}. ${v.text}`).join(' ');
-        this.speakText(text);
+        const selected = document.querySelectorAll('.verse-item-check:checked');
+        if (selected.length === 0) {
+            alert('읽어줄 구절을 선택해주세요.');
+            return;
+        }
+        this.ttsQueue = Array.from(selected).map(cb => ({
+            ref: cb.dataset.ref,
+            text: cb.dataset.text.replace(/<[^>]*>/g, '').trim()
+        }));
+        this.currentTTSIndex = 0;
+        this.openTTSPlayer();
     }
 
-    speakText(text) {
+    speakNoteTTS() {
+        this.ttsQueue = [{
+            ref: '노트 메모',
+            text: this.dom.noteMemo.innerText.trim()
+        }];
+        this.currentTTSIndex = 0;
+        this.openTTSPlayer();
+    }
+
+    openTTSPlayer() {
+        const modal = document.getElementById('tts-player-modal');
+        if (modal) modal.classList.add('active');
+        this.updateTTSPlayerUI();
+        this.playCurrentTTS();
+    }
+
+    updateTTSPlayerUI() {
+        const item = this.ttsQueue[this.currentTTSIndex];
+        if (!item) return;
+        const refEl = document.getElementById('tts-reading-ref');
+        const textEl = document.getElementById('tts-reading-text');
+        if (refEl) refEl.textContent = item.ref;
+        if (textEl) textEl.textContent = item.text;
+    }
+
+    playCurrentTTS() {
         window.speechSynthesis.cancel();
-        
-        // Remove HTML tags for clean reading
-        const plainText = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-        
-        const utterance = new SpeechSynthesisUtterance(plainText);
+        const item = this.ttsQueue[this.currentTTSIndex];
+        if (!item) return;
+
+        const utterance = new SpeechSynthesisUtterance(item.text);
         utterance.lang = 'ko-KR';
         utterance.rate = 1.0;
-        utterance.pitch = 1.0;
         
-        // Find best Korean voice if possible
         const voices = window.speechSynthesis.getVoices();
-        const koVoice = voices.find(v => v.lang.includes('ko') || v.lang.includes('KO'));
-        if (koVoice) utterance.voice = koVoice;
+        const gender = document.querySelector('input[name="tts-voice"]:checked')?.value || 'female';
         
+        // Find Korean voices by common name hints
+        let voice = voices.find(v => v.lang.includes('ko') && (
+            gender === 'male' ? (v.name.includes('Jihun') || v.name.includes('Male')) : 
+            (v.name.includes('Yuna') || v.name.includes('Female'))
+        ));
+        
+        if (!voice) voice = voices.find(v => v.lang.includes('ko'));
+        if (voice) utterance.voice = voice;
+
         utterance.onstart = () => {
-             const btn = this.activeTab === 'tab-note' ? this.dom.ttsBtn : this.dom.bibleTTSBtn;
-             if (btn) btn.classList.add('active');
-        };
-        
-        const stop = () => {
-             const btn = this.activeTab === 'tab-note' ? this.dom.ttsBtn : this.dom.bibleTTSBtn;
-             if (btn) btn.classList.remove('active');
+            const playBtn = document.getElementById('tts-play-btn');
+            if (playBtn) playBtn.innerHTML = '<ion-icon name="pause"></ion-icon>';
         };
 
-        utterance.onend = stop;
-        utterance.onerror = stop;
+        utterance.onend = () => {
+            const playBtn = document.getElementById('tts-play-btn');
+            if (playBtn) playBtn.innerHTML = '<ion-icon name="play"></ion-icon>';
+            
+            const loopMode = document.querySelector('input[name="tts-loop"]:checked')?.value || 'once';
+            if (loopMode === 'repeat') {
+                this.playCurrentTTS();
+            } else if (loopMode === 'continuous') {
+                this.nextTTS();
+            }
+        };
 
         window.speechSynthesis.speak(utterance);
     }
 
     stopTTS() {
         window.speechSynthesis.cancel();
-        this.dom.ttsBtn.classList.remove('active');
+        const playBtn = document.getElementById('tts-play-btn');
+        if (playBtn) playBtn.innerHTML = '<ion-icon name="play"></ion-icon>';
+    }
+
+    nextTTS() {
+        if (this.currentTTSIndex < this.ttsQueue.length - 1) {
+            this.currentTTSIndex++;
+            this.updateTTSPlayerUI();
+            this.playCurrentTTS();
+        }
+    }
+
+    prevTTS() {
+        if (this.currentTTSIndex > 0) {
+            this.currentTTSIndex--;
+            this.updateTTSPlayerUI();
+            this.playCurrentTTS();
+        }
+    }
+
+    setFontSize(size) {
+        let fs = '16px';
+        if (size === 'small') fs = '14px';
+        else if (size === 'large') fs = '20px';
+        
+        document.documentElement.style.setProperty('--app-font-size', fs);
+        document.querySelectorAll('.fs-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.classList.contains(size));
+        });
+        localStorage.setItem('bible_font_size', size);
+    }
+
+    toPrevChapter() {
+        const bookName = this.dom.bookSelect.value;
+        const currentChap = parseInt(this.dom.chapterSelect.value);
+        if (isNaN(currentChap)) return;
+
+        if (currentChap > (this.currentTranslation === 'story' ? 0 : 1)) {
+            this.dom.chapterSelect.value = currentChap - 1;
+            this.renderVerses();
+            document.querySelector('.tab-panel.active').scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    toNextChapter() {
+        const bookName = this.dom.bookSelect.value;
+        const currentChap = parseInt(this.dom.chapterSelect.value);
+        if (isNaN(currentChap)) return;
+
+        if (this.currentTranslation === 'story') {
+            const stories = ALL_STORY_DATA.filter(s => s.book === bookName);
+            if (currentChap < stories.length - 1) {
+                this.dom.chapterSelect.value = currentChap + 1;
+                this.renderVerses();
+                document.querySelector('.tab-panel.active').scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        } else {
+            const book = BIBLE_BOOKS.find(b => b.name === bookName);
+            if (book && currentChap < book.chapters) {
+                this.dom.chapterSelect.value = currentChap + 1;
+                this.renderVerses();
+                document.querySelector('.tab-panel.active').scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
     }
 
     shareSelectedVerses() {
@@ -837,17 +1065,9 @@ class NoteApp {
         this.dom.recordBtn.classList.remove('recording-active');
     }
 
-    toggleTTS() {
-        if (window.speechSynthesis.speaking) {
-            this.stopTTS();
-        } else {
-            const text = this.dom.noteMemo.textContent;
-            if (!text.trim()) {
-                alert('읽어드릴 텍스트가 없습니다.');
-                return;
-            }
-            this.speakText(text);
-        }
+    stopRecordingUI() {
+        this.isRecording = false;
+        this.dom.recordBtn.classList.remove('recording-active');
     }
 
     toggleBookmark() {
@@ -1159,6 +1379,149 @@ class NoteApp {
     openNoteFromCalendar(date) {
         this.loadNoteByDate(date);
         this.switchTab('tab-note');
+    }
+
+    selectStory(idx) {
+        this.dom.chapterSelect.value = idx;
+        this.renderVerses();
+    }
+
+    // ─── English Word Study ───
+
+    splitNivWords(text) {
+        if (!text) return '';
+        // Split by spaces and punctuation, but wrap words only
+        return text.split(/(\s+)/).map(part => {
+            if (/^[a-zA-Z']+$/.test(part)) {
+                return `<span onclick="window.app.onWordClick('${part.replace(/'/g, "\\'")}'); event.stopPropagation();">${part}</span>`;
+            }
+            return part;
+        }).join('');
+    }
+
+    async onWordClick(word) {
+        const cleanWord = word.replace(/[^a-zA-Z']/g, '').toLowerCase();
+        this.openModal('modal-word-detail');
+        this.dom.detailWordTitle.textContent = cleanWord;
+        this.dom.wordInfoContent.innerHTML = '<div class="loading-spinner"></div>';
+        
+        try {
+            const info = await this.getGeminiWordInfo(cleanWord);
+            if (info) {
+                this.dom.wordInfoContent.innerHTML = `
+                    <div class="word-info-group">
+                        <div class="word-info-label">발음</div>
+                        <div class="word-info-value" style="font-family: monospace;">${info.phonetic || 'N/A'}</div>
+                    </div>
+                    <div class="word-info-group">
+                        <div class="word-info-label">뜻</div>
+                        <div class="word-info-value" style="font-size: 1.1rem; color: var(--apple-blue);">${info.meaning || 'N/A'}</div>
+                    </div>
+                    <div class="word-info-group">
+                        <div class="word-info-label">예문</div>
+                        <div class="word-info-value" style="font-style: italic; color: #666;">${info.example || 'Example not found.'}</div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            this.dom.wordInfoContent.innerHTML = '<p>단어 정보를 가져오지 못했습니다.</p>';
+        }
+    }
+
+    async getGeminiWordInfo(word) {
+        const apiKey = localStorage.getItem('gemini_api_key');
+        if (!apiKey) {
+            return { meaning: 'API 키가 필요합니다.', phonetic: '', example: '설정에서 Gemini API 키를 저장해주세요.' };
+        }
+
+        const prompt = `영단어 "${word}"의 뜻, 발음기호, 간단한 예문을 한글로 설명해줘.
+포맷: {"meaning": "뜻", "phonetic": "발음기호", "example": "한글 해석이 포함된 예문"}
+응답은 반드시 JSON 형식으로만 해줘.`;
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { response_mime_type: "application/json" }
+                })
+            });
+            const data = await response.json();
+            const text = data.candidates[0].content.parts[0].text;
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Word info fetch failed:', e);
+            return null;
+        }
+    }
+
+    addWordToStudy(word) {
+        const cleanWord = word.toLowerCase();
+        if (this.englishWords.some(w => w.word === cleanWord)) {
+            alert('이미 단어장에 있는 단어입니다.');
+            return;
+        }
+
+        const infoText = this.dom.wordInfoContent.innerText;
+        // Basic parsing from UI if we don't want to re-fetch
+        const lines = infoText.split('\n');
+        const phonetic = lines.find(l => l.includes('발음'))?.nextElementSibling?.textContent || '';
+        const meaning = lines.find(l => l.includes('뜻'))?.nextElementSibling?.textContent || '';
+
+        this.englishWords.unshift({
+            word: cleanWord,
+            phonetic: phonetic || '',
+            meaning: meaning || '정보 없음'
+        });
+
+        localStorage.setItem('bible_english_words', JSON.stringify(this.englishWords));
+        this.renderWordStudyList();
+        this.closeModal('modal-word-detail');
+        alert('단어장에 저장되었습니다.');
+    }
+
+    renderWordStudyList() {
+        if (!this.dom.wordStudyList) return;
+        
+        this.dom.wordCountBadge.textContent = this.englishWords.length;
+        
+        if (this.englishWords.length === 0) {
+            this.dom.wordStudyList.innerHTML = '<p class="empty-hint">NIV 말씀의 단어를 클릭하면 여기에 추가됩니다</p>';
+            return;
+        }
+
+        this.dom.wordStudyList.innerHTML = this.englishWords.map((item, idx) => `
+            <div class="word-item" onclick="this.classList.toggle('show-meaning')">
+                <div class="word-header">
+                    <span class="word-text">${item.word}</span>
+                    <span class="word-pronounce">${item.phonetic}</span>
+                    <button onclick="window.app.removeWord(${idx}); event.stopPropagation();" 
+                            style="background:none; border:none; color:#ff3b30; font-size:1.2rem; cursor:pointer;">
+                        <ion-icon name="trash-outline"></ion-icon>
+                    </button>
+                </div>
+                <div class="word-meaning">${item.meaning}</div>
+            </div>
+        `).join('');
+    }
+
+    removeWord(idx) {
+        if (confirm('이 단어를 삭제하시겠습니까?')) {
+            this.englishWords.splice(idx, 1);
+            localStorage.setItem('bible_english_words', JSON.stringify(this.englishWords));
+            this.renderWordStudyList();
+        }
+    }
+
+    openModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) modal.classList.add('active');
+    }
+
+    closeModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) modal.classList.remove('active');
     }
 }
 

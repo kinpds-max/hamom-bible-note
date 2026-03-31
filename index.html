@@ -67,6 +67,11 @@
                 <option value="dawn">새벽예배</option>
                 <option value="etc">기타</option>
             </select>
+            <div class="font-size-picker">
+                <button onclick="window.app.setFontSize('small')" class="fs-btn small">A</button>
+                <button onclick="window.app.setFontSize('default')" class="fs-btn default active">A</button>
+                <button onclick="window.app.setFontSize('large')" class="fs-btn large">A</button>
+            </div>
             <div id="auto-save-indicator" class="save-dot"></div>
         </div>
 
@@ -163,6 +168,9 @@
                         <button id="bible-share-btn" class="fab-tool-btn" title="공유">
                             <ion-icon name="share-social-outline"></ion-icon>
                         </button>
+                        <button id="bible-eng-btn" class="fab-tool-btn eng" title="영어 단어 연구">
+                            <span class="eng-icon">ENG</span>
+                        </button>
                     </div>
                 </div>
             </section>
@@ -211,6 +219,20 @@
                 <div id="editor-container" class="editor-wrapper">
                     <div id="note-memo" class="note-editor-field" contenteditable="true"
                          data-placeholder="설교 내용이나 묵상 내용을 자유롭게 기록하세요..."></div>
+                </div>
+
+                <!-- English Word Study Section -->
+                <div class="word-study-accordion">
+                    <button id="word-study-toggle" class="accordion-header">
+                        <span>
+                            <ion-icon name="language-outline"></ion-icon>
+                            영어 단어장 <span id="word-count-badge" class="count-badge">0</span>
+                        </span>
+                        <ion-icon name="chevron-down-outline" class="accordion-chevron"></ion-icon>
+                    </button>
+                    <div id="word-study-list" class="accordion-body">
+                        <p class="empty-hint">NIV 말씀의 단어를 클릭하면 여기에 추가됩니다</p>
+                    </div>
                 </div>
             </section>
 
@@ -309,9 +331,14 @@
             <div class="modal-handle"></div>
             <div class="modal-header">
                 <h2><ion-icon name="sparkles"></ion-icon> AI 영적 통찰 요약</h2>
-                <button id="close-modal" class="modal-close-btn">
-                    <ion-icon name="close-circle"></ion-icon>
-                </button>
+                <div class="modal-header-actions">
+                    <button id="api-setup-btn" class="icon-btn-sm"><ion-icon name="settings-outline"></ion-icon></button>
+                    <button id="close-modal" class="close-modal-btn"><ion-icon name="close-circle"></ion-icon></button>
+                </div>
+            </div>
+            <div id="api-setup-panel" class="api-setup-panel hidden">
+                <input type="password" id="gemini-key-input" placeholder="Google Gemini API 키 입력">
+                <button id="save-key-btn" class="status-btn">저장</button>
             </div>
             <div id="summary-result" class="modal-body">
                 <!-- Summary content -->
@@ -319,6 +346,63 @@
             <div class="modal-actions">
                 <button id="copy-summary-btn" class="action-btn primary">
                     <ion-icon name="copy-outline"></ion-icon> 본문 복사
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TTS Player Modal ===== -->
+    <div id="tts-player-modal" class="modal-overlay">
+        <div class="modal-card tts-card">
+            <div class="modal-handle"></div>
+            <div class="modal-title">성경 말씀 읽어주기</div>
+            <div class="tts-now-playing">
+                <div id="tts-reading-ref" class="tts-ref">베드로후서 1:1</div>
+                <div id="tts-reading-text" class="tts-text">텍스트를 불러오고 있습니다...</div>
+            </div>
+            <div class="tts-controls-main">
+                <button id="tts-prev-btn" class="tts-small-btn"><ion-icon name="play-skip-back"></ion-icon></button>
+                <button id="tts-play-btn" class="tts-primary-btn active"><ion-icon name="play"></ion-icon></button>
+                <button id="tts-stop-btn" class="tts-primary-btn"><ion-icon name="stop"></ion-icon></button>
+                <button id="tts-next-btn" class="tts-small-btn"><ion-icon name="play-skip-forward"></ion-icon></button>
+            </div>
+            <div class="tts-options-panel">
+                <div class="tts-option">
+                    <label class="option-label">목소리</label>
+                    <div class="option-chips voice-chips">
+                        <label><input type="radio" name="tts-voice" value="female" checked> <span>여성</span></label>
+                        <label><input type="radio" name="tts-voice" value="male"> <span>남성</span></label>
+                    </div>
+                </div>
+                <div class="tts-option">
+                    <label class="option-label">재생 방식</label>
+                    <div class="option-chips loop-chips">
+                        <label><input type="radio" name="tts-loop" value="once" checked> <span>한번</span></label>
+                        <label><input type="radio" name="tts-loop" value="repeat"> <span>반복</span></label>
+                        <label><input type="radio" name="tts-loop" value="continuous"> <span>연속</span></label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="close-tts-modal" class="action-btn gray">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Word Detail Modal -->
+    <div id="modal-word-detail" class="modal">
+        <div class="modal-content apple-card glass">
+            <header class="modal-header">
+                <div class="drag-handle"></div>
+                <h3 id="detail-word-title">Word</h3>
+                <button class="modal-close-btn" onclick="window.app.closeModal('modal-word-detail')">닫기</button>
+            </header>
+            <div class="modal-body">
+                <div id="word-info-content" class="word-info">
+                    <div class="loading-spinner"></div>
+                </div>
+                <button id="add-to-memo-btn" class="action-btn primary" style="width: 100%; margin-top: 20px;">
+                    <ion-icon name="add-circle-outline"></ion-icon> 단어장에 추가
                 </button>
             </div>
         </div>
